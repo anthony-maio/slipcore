@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m slipcore.generate_dataset:*)",
+      "Bash(python examples/simple_roundtrip.py:*)",
+      "Bash(python examples/coordinator_planner_demo.py:*)",
+      "Bash(git add:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(dir:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
