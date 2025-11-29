@@ -1,3 +1,5 @@
+"""SLIPCore - Streamlined Intragent Protocol for LLM agent communication."""
+
 from .protocol import (
     SlipMessage,
     Act,
@@ -7,6 +9,8 @@ from .protocol import (
     decode_message,
 )
 
+__version__ = "0.1.0"
+
 __all__ = [
     "SlipMessage",
     "Act",
@@ -14,4 +18,5 @@ __all__ = [
     "Slot",
     "encode_message",
     "decode_message",
+    "__version__",
 ]

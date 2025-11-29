@@ -13,7 +13,9 @@
       "Bash(dir:*)",
       "Bash(cat:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: SLIPCore - Streamlined Intragent Protocol\n\nCore protocol implementation:\n- nSLIP wire format encoder/decoder with Base62 encoding\n- Acts (REQUEST, PROPOSE, INFORM, EVAL, etc.) and Frames (TASK, PLAN, OBSERVATION)\n- Typed slots for goal_id, task_id, priority, status, score, tag\n\nDataset generators:\n- Template-based generator for quick synthetic data\n- LLM-enhanced generator using Ollama for diverse, realistic goals\n- 6,356 training examples included (JSONL format for LoRA/QLoRA)\n\nClaude Code integration:\n- nSLIP protocol skill for parsing/generating messages\n- /parse-nslip and /create-nslip slash commands\n- CLAUDE.md development guide\n\nExamples and documentation:\n- Simple roundtrip and coordinator-planner demo scripts\n- Protocol specification (spec/slip-spec.md)\n- Finetune data format documentation\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(git remote add:*)",
+      "Bash(git remote set-url:*)"
     ],
     "deny": [],
     "ask": []
