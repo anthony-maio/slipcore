@@ -4,20 +4,31 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slipcore"
-version = "0.1.0"
-description = "Streamlined Intragent Protocol - compact agent-to-agent messaging for LLM systems"
+version = "2.0.0"
+description = "Slipstream Protocol - Semantic Quantization for Efficient Multi-Agent Coordination"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
-keywords = ["agents", "llm", "protocol", "multi-agent", "langchain", "langgraph"]
+keywords = [
+    "agents",
+    "llm",
+    "protocol",
+    "multi-agent",
+    "semantic-quantization",
+    "agentic-ai",
+    "mcp",
+    "langchain",
+    "langgraph",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
@@ -28,14 +39,34 @@ Repository = "https://github.com/anthony-maio/slipcore"
 Issues = "https://github.com/anthony-maio/slipcore/issues"
 
 [project.optional-dependencies]
+# Embedding-based quantization (more accurate, but heavier)
+embeddings = [
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.24.0",
+]
+# UCR building from conversation corpora
+builder = [
+    "sentence-transformers>=2.2.0",
+    "scikit-learn>=1.3.0",
+    "numpy>=1.24.0",
+]
+# LLM-enhanced dataset generation
+llm = [
+    "httpx>=0.25.0",
+]
+# Development tools
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.1.0",
 ]
-
-[project.scripts]
-slipcore-generate = "slipcore.generate_dataset:main"
+# All optional dependencies
+all = [
+    "sentence-transformers>=2.2.0",
+    "scikit-learn>=1.3.0",
+    "numpy>=1.24.0",
+    "httpx>=0.25.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

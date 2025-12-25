@@ -20,7 +20,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
+.claude/
 # Virtual environments
 venv/
 ENV/

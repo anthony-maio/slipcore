@@ -1,8 +1,10 @@
-# CLAUDE.md - SLIPCore Development Guide
+# CLAUDE.md - Slipstream Development Guide
 
 ## Project Overview
 
-SLIPCore (Streamlined Intragent Protocol) is a compact, schema-driven protocol for agent-to-agent messaging in multi-agent LLM systems. It provides token-efficient communication between agents like planners, executors, critics, and coordinators.
+**Slipstream (SLIP)** is a semantic quantization protocol for efficient multi-agent coordination. Unlike syntactic compression (minification), Slipstream achieves token efficiency by transmitting **pointers to concepts** rather than the concepts themselves.
+
+Key innovation: The **Universal Concept Reference (UCR)** - a quantized semantic manifold that serves as a shared vocabulary for agent intents.
 
 ## Quick Commands
 
@@ -10,110 +12,157 @@ SLIPCore (Streamlined Intragent Protocol) is a compact, schema-driven protocol f
 # Install in development mode
 pip install -e .
 
-# Run examples
-python examples/simple_roundtrip.py
-python examples/coordinator_planner_demo.py
+# Run demo
+python examples/slipstream_demo.py
 
-# Generate training dataset (1000 conversations = 4000 examples)
-python -m slipcore.generate_dataset --num-conversations 1000
+# Generate finetuning dataset
+python -m slipcore.finetune -n 500 -f sharegpt -o train.jsonl
 
-# LLM-enhanced generation (diverse, realistic goals via Ollama)
-python -m slipcore.generate_dataset_llm --num-conversations 500 --model qwen2.5:14b
-
-# Remote Ollama with larger model
-python -m slipcore.generate_dataset_llm \
-  --ollama-url http://192.168.86.35:11434 \
-  --model qwen3:32b \
-  --num-conversations 1000
+# Test the library
+python -c "from slipcore import slip, decode; print(slip('alice', 'bob', 'RequestReview'))"
 ```
 
 ## Architecture
 
-### Core Protocol (`src/slipcore/protocol.py`)
+### Core Modules (`src/slipcore/`)
 
-- **Act enum**: Speech acts (OBSERVE, INFORM, ASK, REQUEST, PROPOSE, COMMIT, ACCEPT, REJECT, EVAL, ERROR, META)
-- **FrameType enum**: Message frames (TASK, PLAN, OBSERVATION, EVALUATION, CONTROL)
-- **Slot enum**: Typed fields (GOAL_ID, TASK_ID, PRIORITY, SCORE, STATUS, TAG, etc.)
-- **SlipMessage dataclass**: The core message type
-- **encode_message/decode_message**: nSLIP wire format encoding
+- **`ucr.py`**: Universal Concept Reference - the semantic manifold
+  - `UCRAnchor`: Named positions in the manifold
+  - `UCR`: Registry of anchors with lookup methods
+  - `Dimension`: Semantic axes (ACTION, POLARITY, DOMAIN, URGENCY)
 
-### nSLIP Wire Format
+- **`protocol.py`**: Token-aligned wire format
+  - `SlipMessage`: The message dataclass
+  - `encode()` / `decode()`: Wire format conversion
+  - `slip()`: Quick message creation
+  - `fallback()`: Unquantizable content handling
 
-Compact string format: `@a<act>|f<frame>|c<conv>|S<src>|d<dst>|T<turn>|<slots...>#`
+- **`quantizer.py`**: Think-Quantize-Transmit engine
+  - `quantize()`: Map thought to nearest anchor
+  - `think_quantize_transmit()`: Full TQT flow
+  - `KeywordQuantizer`: Fast, no-dependency quantizer
+  - `EmbeddingQuantizer`: Accurate, requires sentence-transformers
 
-Example: `@a3|f0|c1|S0|d1|T1|g1|k1|q2|t"refactor_auth"#`
+- **`extensions.py`**: Dynamic local anchors
+  - `ExtensionManager`: Add/manage extension anchors
+  - `FallbackTracker`: Track patterns for UCR evolution
 
-- Header prefixes: `a`=act, `f`=frame, `c`=conv_id, `S`=src, `d`=dst, `T`=turn
-- Slot prefixes: `g`=goal_id, `k`=task_id, `p`=parent_task, `r`=result_id, `q`=priority, `s`=score, `u`=status, `e`=error_code, `t`=tag
-- Values: Base62 integers or quoted strings
+- **`finetune.py`**: Training dataset generation
+  - `generate_dataset()`: Create training data
+  - Supports ShareGPT, Chat, Alpaca formats
 
-### Dataset Generators
+### Wire Format
 
-**Template-based** (`src/slipcore/generate_dataset.py`):
-- Fast, deterministic
-- Uses predefined goal templates
+```
+SLIP v1 <src> <dst> <anchor> [payload...]
+```
 
-**LLM-enhanced** (`src/slipcore/generate_dataset_llm.py`):
-- Uses Ollama to generate diverse, realistic goals
-- Supports local or remote Ollama instances
-- Better for training robust models
+Example: `SLIP v1 alice bob RequestReview auth_module`
 
-Both generate synthetic conversation flows:
-1. Coordinator: human goal → REQUEST/TASK
-2. Planner: REQUEST/TASK → PROPOSE/PLAN
-3. Executor: PROPOSE/PLAN → INFORM/OBSERVATION
-4. Critic: INFORM/OBSERVATION → EVAL/EVALUATION
+Design principles:
+- No special characters (avoids BPE fragmentation)
+- Space-separated (clean tokenization)
+- CamelCase anchors (often single tokens)
 
-Output: JSONL with `role`, `input`, `target` fields for LoRA/QLoRA training.
+### UCR Structure
 
-## Key Design Decisions
+4-dimensional semantic manifold:
+- **ACTION** (0-7): observe, inform, ask, request, propose, commit, evaluate, meta
+- **POLARITY** (0-7): negative to positive valence
+- **DOMAIN** (0-7): task, plan, observation, evaluation, control, resource, error, general
+- **URGENCY** (0-7): background to critical
 
-- **Base62 encoding** for compact integer representation
-- **Uppercase S/T** for src/turn headers to avoid conflict with slot prefixes (s=score, t=tag)
-- **IDs not blobs**: Large artifacts referenced by ID, stored externally
-- **Framework agnostic**: Works with LangGraph, LangChain, or custom orchestrators
+Address ranges:
+- Core (0x0000-0x7FFF): Standard anchors, immutable per version
+- Extension (0x8000-0xFFFF): Installation-specific, evolvable
+
+## Key APIs
+
+```python
+from slipcore import slip, decode, quantize, think_quantize_transmit
+
+# Create message directly
+wire = slip("alice", "bob", "RequestReview")
+
+# Think-Quantize-Transmit
+wire = think_quantize_transmit(
+    "Please review the auth code",
+    src="dev", dst="reviewer"
+)
+
+# Decode
+msg = decode(wire)
+print(msg.anchor.canonical)
+
+# Generate training data
+from slipcore import generate_dataset
+generate_dataset(Path("train.jsonl"), num_examples=500, format="sharegpt")
+```
 
 ## File Structure
 
 ```
 slipcore/
 ├── src/slipcore/
-│   ├── __init__.py          # Public API exports
-│   ├── protocol.py          # Core protocol implementation
-│   └── generate_dataset.py  # Training data generator
+│   ├── __init__.py        # Public API
+│   ├── ucr.py             # Semantic manifold
+│   ├── protocol.py        # Wire format
+│   ├── quantizer.py       # TQT engine
+│   ├── extensions.py      # Local anchors
+│   └── finetune.py        # Dataset generation
 ├── examples/
-│   ├── simple_roundtrip.py
-│   └── coordinator_planner_demo.py
-├── data/finetune/
-│   ├── README.md
-│   └── nslip_pairs.sample.jsonl
+│   └── slipstream_demo.py # Full demo
 ├── spec/
-│   └── slip-spec.md         # Protocol specification
+│   └── slip-spec.md       # Protocol specification
+├── .claude/
+│   ├── skills/
+│   │   ├── slipstream-protocol.md  # Protocol reference
+│   │   └── slipstream-finetune.md  # Finetuning guide
+│   └── commands/
+│       ├── parse-slip.md
+│       └── create-slip.md
 └── pyproject.toml
 ```
 
 ## Claude Skills & Commands
 
-This repo includes Claude Code skills for working with nSLIP:
+### Skills
+- **slipstream-protocol**: Complete protocol reference
+- **slipstream-finetune**: Guide for finetuning with Unsloth
 
-### Skill: nSLIP Protocol
-Located at `.claude/skills/nslip-protocol.md` - provides complete protocol reference including:
-- Message structure and encoding
-- All acts, frames, and slots
-- Base62 encoding rules
-- Common message patterns
+### Commands
+- `/parse-slip <message>` - Parse and explain a SLIP message
+- `/create-slip <description>` - Generate a SLIP message from natural language
 
-### Slash Commands
-- `/parse-nslip <message>` - Parse and explain an nSLIP wire message
-- `/create-nslip <description>` - Generate an nSLIP message from natural language
+## AAIF Integration
 
-## Extending the Protocol
+Slipstream is designed for the Linux Foundation Agentic AI ecosystem:
 
-To add new slots:
-1. Add to `Slot` enum in `protocol.py` with unique int value
-2. Add single-char prefix to `_SLOT_PREFIX` dict
-3. Update spec documentation
+```
+┌─────────────────────────────────────┐
+│   Application (Agent Logic)        │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│   MCP / A2A (Semantic Layer)        │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│   Slipstream (Transport Layer)      │  ← 80% token reduction
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│   Network                           │
+└─────────────────────────────────────┘
+```
 
-To add new acts/frames:
-1. Add to respective enum
-2. Update spec documentation
+## Contributing
+
+1. Core UCR anchors are immutable within a version
+2. Add extension anchors for domain-specific needs
+3. Track fallback patterns to identify UCR gaps
+4. Submit popular extensions for core promotion
+
+## License
+
+Apache 2.0

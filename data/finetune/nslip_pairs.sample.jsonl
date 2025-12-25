@@ -1,3 +1,0 @@
-{"role":"planner","input":"You are a planner agent. You receive nSLIP messages and a goal registry.\nCurrent message: @a3|f0|c3|s0|d1|t1|g1|k1|q1|t\"demo_task\"#\nGoal[1]: Implement a health-check endpoint.\nRespond with a PROPOSE/PLAN nSLIP message.","target":"@a4|f1|c3|s1|d0|t2|g1|k1|q1|t\"plan_v1\"#"}
-{"role":"executor","input":"You are an executor agent.\nPlan message: @a4|f1|c3|s1|d2|t3|g1|k1|t\"plan_v1\"#\nGoal[1]: Implement a health-check endpoint.","target":"@a1|f2|c3|s2|d0|t4|g1|k1|r1|u\"in_progress\"#"}
-{"role":"critic","input":"You are a critic agent.\nObservation: @a1|f2|c3|s2|d0|t4|g1|k1|r1|u\"done\"#\nGoal[1]: Implement a health-check endpoint.\nEvaluate the result in an EVAL message.","target":"@a8|f3|c3|s3|d0|t5|g1|k1|sA|t\"ok\"#"}

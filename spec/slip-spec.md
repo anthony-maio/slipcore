@@ -1,154 +1,257 @@
-# SLIP Specification (v0.1)
+# Slipstream Protocol Specification (v2.0)
 
 ## 1. Overview
 
-SLIP (Streamlined Intragent Protocol) is a small, typed message language for **internal communication between agents** in an agentic system.
+**Slipstream (SLIP)** is a semantic quantization protocol for efficient multi-agent coordination. Unlike syntactic compression approaches (minification, base encoding), Slipstream achieves token efficiency by transmitting **pointers to concepts** rather than the concepts themselves.
 
-Goals:
+### Key Innovation: Semantic Quantization
 
-- Provide a **closed set of speech acts** for coordination.
-- Encode messages with **frame types** and **slot IDs**, not repeated strings.
-- Support **compact wire encoding** (nSLIP) suitable for LLM prompts and logs.
-- Stay orthogonal to orchestration frameworks (LangGraph, LangChain, custom).
+Traditional approaches compress the *syntax* of messages. Slipstream quantizes the *semantics*:
 
-SLIP is a logical protocol. `slipcore` is a Python implementation plus a compact textual wire form (nSLIP).
+```
+Traditional:  "Please review this code for security issues"  (~12 tokens)
+              ↓ (minify)
+              "REQ/REV|sec"  (~6 tokens, but BPE fragments to ~10)
 
----
-
-## 2. Message model
-
-A `SlipMessage` has:
-
-- `conv_id` – conversation/session id (int)
-- `turn`    – turn number (int)
-- `src`     – source agent id (int)
-- `dst`     – destination agent id (int)
-- `act`     – speech act (enum `Act`)
-- `frame`   – frame type (enum `FrameType`)
-- `slots`   – map from `Slot` → value (IDs, small scalars, short tags)
-
-### Acts (`Act`)
-
-- `OBSERVE` – report new info about world/state
-- `INFORM`  – derived info / belief
-- `ASK`     – request information
-- `REQUEST` – request a task/operation
-- `PROPOSE` – propose a plan/option
-- `COMMIT`  – commit to a plan/task
-- `ACCEPT`  – accept a plan/request
-- `REJECT`  – reject a plan/request
-- `EVAL`    – evaluate a plan/result
-- `ERROR`   – report an error
-- `META`    – protocol/capability update
-
-### Frame types (`FrameType`)
-
-- `TASK`         – task definition / status
-- `PLAN`         – plan with steps and estimates
-- `OBSERVATION`  – observation about the environment
-- `EVALUATION`   – evaluation of something
-- `CONTROL`      – meta/protocol level
-
-### Slots (`Slot`)
-
-Each slot has a stable integer code and a single-character prefix in nSLIP.
-
-Core ID slots:
-
-- `GOAL_ID`         (`g`) – goal handle
-- `TASK_ID`         (`k`) – task handle
-- `PARENT_TASK_ID`  (`p`) – parent task handle
-- `RESULT_ID`       (`r`) – result/artifact handle
-
-Core scalar/meta slots:
-
-- `PRIORITY` (`q`) – small int
-- `SCORE`    (`s`) – numeric score (encoded as int)
-- `STATUS`   (`u`) – short status string
-- `ERROR_CODE` (`e`) – error code as int
-- `TAG`        (`t`) – short mnemonic tag/string
-
-Value types:
-
-- Integer values: non-negative ints (IDs, small scalars) encoded in base62.
-- Short string values: quoted strings, NOT for large text blobs.
-
-Large artifacts (code, docs, logs) must live in external stores and be referenced by IDs here.
-
----
-
-## 3. Wire encoding: nSLIP
-
-The nSLIP wire form is a compact string consumed/emitted by LLM agents.
-
-Shape:
-
-```text
-@a<act>|f<frame>|c<conv>|S<src>|d<dst>|T<turn>|<slot-prefix><value>|...#
+Slipstream:   "Please review this code for security issues"  (~12 tokens)
+              ↓ (semantic quantization)
+              "SLIP v1 alice bob RequestReview"  (5 tokens)
 ```
 
-Where:
+### Goals
 
-* `@` – start marker
-* `#` – end marker
-* `|` – separator
-* `a,f,c,S,d,T` – header field prefixes (note: uppercase S,T to avoid conflict with slot prefixes)
-* `<slot-prefix>` – one character from the slot table (e.g. `g`, `k`, `r`)
-
-### Base62 integers
-
-Non-negative ints are encoded in base62 using:
-
-`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`
-
-Example:
-
-* `0` → `0`
-* `10` → `A`
-* `61` → `z`
-* `62` → `10`
-
-### Strings
-
-Short strings are encoded as:
-
-* `"some_text"` with minimal escaping:
-
-  * `\` → `\\`
-  * `"` → `\"`
-
-These are for **tags** or short statuses only, not for long natural-language text.
+- **Token efficiency**: 70-80% reduction vs JSON-wrapped natural language
+- **Model agnostic**: Works across GPT-4, Claude, Llama, etc.
+- **BPE friendly**: No special characters that fragment in tokenizers
+- **Evolvable**: Core standard + extension layer for local concepts
 
 ---
 
-## 4. Examples
+## 2. Universal Concept Reference (UCR)
 
-### REQUEST for a task
+The UCR is a **quantized semantic manifold** - a shared coordinate system for agent thoughts.
 
-Logical message:
+### 2.1 Semantic Dimensions
 
-* `conv_id = 3`, `turn = 1`, `src = 0 (coord)`, `dst = 1 (planner)`
-* `act = REQUEST`, `frame = TASK`
-* slots: `GOAL_ID = 17`, `TASK_ID = 42`, `PRIORITY = 2`, `TAG = "refactor_auth"`
+The manifold has 4 dimensions representing fundamental aspects of agent communication:
 
-nSLIP:
+| Dimension | Description | Levels (0-7) |
+|-----------|-------------|--------------|
+| ACTION | What type of action | observe, inform, ask, request, propose, commit, evaluate, meta |
+| POLARITY | Positive/negative valence | strongly negative → neutral → strongly positive |
+| DOMAIN | Context/topic area | task, plan, observation, evaluation, control, resource, error, general |
+| URGENCY | Priority level | background → normal → critical |
 
-```text
-@a3|f0|c3|S0|d1|T1|gH|kg|q2|t"refactor_auth"#
+### 2.2 Anchors
+
+Anchors are **named positions** in the manifold. Common agent intents get human-readable mnemonics:
+
+```python
+UCRAnchor(
+    index=0x0032,
+    mnemonic="RequestReview",      # Wire-format token
+    canonical="Request review of work",  # Human description
+    coords=(3, 4, 3, 3),           # (action, polarity, domain, urgency)
+)
 ```
 
-(Actual base62 digits depend on IDs.)
+### 2.3 Address Ranges
+
+- **Core UCR (0x0000-0x7FFF)**: Standard anchors, immutable per version
+- **Extension UCR (0x8000-0xFFFF)**: Installation-specific, evolvable
 
 ---
 
-## 5. Intended usage
+## 3. Wire Format
 
-* Internal messages between agents in LangGraph / LangChain / custom frameworks.
-* Agents receive `SlipMessage` + access to shared stores (goals, tasks, artifacts).
-* LLM prompts are constructed from these, and LLM outputs are parsed back into `SlipMessage`s.
+### 3.1 Structure
 
-## 6. Future extensions (non-breaking)
+```
+SLIP <version> <src> <dst> <anchor> [payload...]
+```
 
-* Additional slots/frames (e.g. deadlines, confidence, cost).
-* Binary/byte-based encodings (protobuf/CBOR) using the same Act/Frame/Slot schema.
-* Schema versioning in header.
+| Field | Description | Tokens |
+|-------|-------------|--------|
+| `SLIP` | Protocol marker | 1 |
+| `<version>` | Protocol version (e.g., `v1`) | 1 |
+| `<src>` | Source agent identifier | 1 |
+| `<dst>` | Destination agent identifier | 1 |
+| `<anchor>` | UCR mnemonic (e.g., `RequestReview`) | 1 |
+| `[payload...]` | Optional unquantizable content | variable |
+
+### 3.2 Design Principles
+
+1. **No special characters**: Avoid `|`, `@`, `#`, `=` which fragment in BPE
+2. **Space separation only**: Spaces are handled well by all tokenizers
+3. **CamelCase mnemonics**: Compound words often tokenize as single units
+4. **Natural words**: Use vocabulary that exists in standard tokenizers
+
+### 3.3 Examples
+
+```
+# Simple coordination
+SLIP v1 alice bob RequestReview
+
+# With payload
+SLIP v1 planner executor RequestTask auth refactor
+
+# Fallback for unquantizable content
+SLIP v1 devops sre Fallback check kubernetes pod logs
+
+# With thread ID
+SLIP v1 worker manager InformProgress thread42 milestone3
+```
+
+---
+
+## 4. Think-Quantize-Transmit Pattern
+
+The core workflow for semantic quantization:
+
+### 4.1 Think
+Agent formulates intent in natural language:
+```
+"I need someone to review this code for security vulnerabilities"
+```
+
+### 4.2 Quantize
+Map thought to nearest UCR anchor:
+```python
+result = quantize(thought)
+# → UCRAnchor(mnemonic="RequestReview", confidence=0.85)
+```
+
+### 4.3 Transmit
+Send wire-format message:
+```
+SLIP v1 developer reviewer RequestReview
+```
+
+### 4.4 Reconstruct
+Receiver looks up anchor and reconstructs intent:
+```python
+msg = decode(wire)
+# → canonical: "Request review of work"
+# → coords: (3, 4, 3, 3)
+```
+
+---
+
+## 5. Fallback Mechanism
+
+When quantization confidence is low, use natural language fallback:
+
+```python
+result = quantize("check kubernetes pods for OOMKilled events")
+if result.confidence < threshold:
+    wire = fallback(src, dst, original_text)
+    # → SLIP v1 devops sre Fallback check kubernetes pods for OOMKilled events
+```
+
+Fallback messages are logged for UCR evolution analysis.
+
+---
+
+## 6. Extension Layer
+
+### 6.1 Local Anchors
+
+Installations can add domain-specific anchors in the 0x8000+ range:
+
+```python
+manager = ExtensionManager()
+anchor = manager.add_extension(
+    canonical="Request Kubernetes cluster scaling",
+    mnemonic="RequestK8sScale",
+)
+# → index: 0x8000
+```
+
+### 6.2 UCR Evolution
+
+1. **Track fallbacks**: Log patterns that don't quantize well
+2. **Identify gaps**: Find frequently occurring fallback patterns
+3. **Create extensions**: Add local anchors for common patterns
+4. **Propose promotions**: Export extensions for core UCR consideration
+
+---
+
+## 7. Integration
+
+### 7.1 AAIF Ecosystem
+
+Slipstream operates at the **transport layer** beneath MCP and A2A:
+
+```
+┌─────────────────────────────────────┐
+│   Application (Agent Logic)        │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│   MCP / A2A (Semantic Layer)        │ ← Discovery, capabilities
+└────────────────┬────────────────────┘
+                 │ Natural language intent
+┌────────────────▼────────────────────┐
+│   Slipstream (Transport Layer)      │ ← Semantic quantization
+│   Encode: Intent → UCR index        │
+│   Wire: SLIP v1 A B Anchor          │
+└────────────────┬────────────────────┘
+                 │ 5 tokens (vs 50)
+┌────────────────▼────────────────────┐
+│   Network (HTTP, WebSocket, etc.)   │
+└─────────────────────────────────────┘
+```
+
+### 7.2 Framework Compatibility
+
+- **LangGraph / LangChain**: Message transformation layer
+- **Custom orchestrators**: Encode/decode at system boundaries
+- **Direct agent communication**: Native SLIP message passing
+
+---
+
+## 8. Versioning
+
+### 8.1 UCR Versions
+
+UCR follows semantic versioning:
+- **Major**: Breaking changes to dimension structure
+- **Minor**: New anchors added to core range
+- **Patch**: Documentation, mnemonic clarifications
+
+### 8.2 Protocol Versions
+
+Wire format versions (v1, v2, ...) are backward compatible within major version.
+
+---
+
+## 9. Reference Implementation
+
+See `slipcore` Python package:
+
+```python
+from slipcore import slip, decode, quantize, think_quantize_transmit
+
+# Direct message creation
+wire = slip("alice", "bob", "RequestReview")
+
+# Full Think-Quantize-Transmit
+wire = think_quantize_transmit(
+    "Please review the auth code for security issues",
+    src="dev",
+    dst="reviewer"
+)
+
+# Decode
+msg = decode(wire)
+print(msg.anchor.canonical)  # "Request review of work"
+```
+
+---
+
+## 10. Future Extensions
+
+- **Hierarchical UCR**: Multi-level codebooks for domain specialization
+- **Federated evolution**: Cross-installation UCR improvement
+- **Binary format**: CBOR/protobuf encoding for high-frequency systems
+- **Embedding quantizer**: sentence-transformers based matching

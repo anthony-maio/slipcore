@@ -1,193 +1,164 @@
-# SLIPCore - The Protocol for Agent Swarms at Scale
+# Slipstream - Semantic Quantization for Multi-Agent Coordination
 
-**63% fewer tokens. Same semantics. Built for millions of agent messages.**
+**80% fewer tokens. Semantic meaning preserved. Built for the AAIF ecosystem.**
 
 ```
-JSON (88 tokens):
-{"act":"request","frame":"task","conv_id":1,"turn":1,"src":0,"dst":1,
- "slots":{"goal_id":1,"task_id":1,"priority":2,"tag":"implement_auth"}}
+JSON (~45 tokens):
+{"from": "alice", "to": "bob", "type": "request", "action": "review", "target": "auth_module"}
 
-nSLIP (32 tokens):
-@a3|f0|c1|S0|d1|T1|g1|k1|q2|t"implement_auth"#
+Slipstream (5 tokens):
+SLIP v1 alice bob RequestReview auth_module
 ```
 
-When you are running 10,000 agents processing 1M messages/day, **JSON curly brackets cost you $1,680/day** at GPT-4 rates. nSLIP cuts that to **$640/day**. At scale, syntax is a tax.
+When running agent swarms at scale, **communication overhead is the bottleneck**. Slipstream solves this through *semantic quantization* - transmitting pointers to concepts rather than the concepts themselves.
 
 ## The Problem
 
-Multi-agent systems are exploding. Coordinators dispatch to planners. Planners spawn executors. Critics evaluate results. Memory agents retrieve context. Each hop is a message. Each message burns tokens.
-
-**JSON is designed for humans to read.** Your agents do not need `"goal_id":` repeated 50,000 times - they need `g1`.
+Multi-agent systems waste **40-60% of compute on coordination**. BPE tokenizers fragment compressed formats (`|g=42` becomes 4 tokens), negating syntactic optimization.
 
 ## The Solution
 
-SLIPCore provides a **wire protocol** for agent-to-agent communication:
-
-- **32 tokens** instead of 88 for equivalent messages
-- **Type-safe** Python dataclasses - no string manipulation in your code
-- **Finetune-ready** - train small models to speak nSLIP natively
-- **Framework-agnostic** - works with LangGraph, CrewAI, AutoGen, or custom
-
-Natural language stays at the edges (human <-> system). Inside, agents speak nSLIP.
-
-## Who Is This For?
-
-- **Agent framework builders** optimizing token costs at scale
-- **Researchers** studying multi-agent coordination patterns
-- **Teams running production agent swarms** where API costs matter
-- **Anyone finetuning small models** for specific agent roles
-
-## Quick Example
+Slipstream uses a **Universal Concept Reference (UCR)** - a shared semantic manifold where common agent intents have single-token names:
 
 ```python
-from slipcore import SlipMessage, Act, FrameType, Slot, encode_message, decode_message
+from slipcore import slip, decode, think_quantize_transmit
 
-# Coordinator requests planner to implement auth
-msg = SlipMessage(
-    conv_id=1, turn=1, src=0, dst=1,
-    act=Act.REQUEST, frame=FrameType.TASK,
-    slots={Slot.GOAL_ID: 1, Slot.TASK_ID: 1, Slot.PRIORITY: 2, Slot.TAG: "implement_auth"}
+# Direct message creation
+wire = slip("alice", "bob", "RequestReview")
+# -> "SLIP v1 alice bob RequestReview" (5 tokens)
+
+# Think-Quantize-Transmit pattern
+wire = think_quantize_transmit(
+    "Please check the authentication code for security issues",
+    src="dev", dst="reviewer"
 )
+# -> "SLIP v1 dev reviewer RequestReview" (5 tokens)
 
-wire = encode_message(msg)  # "@a3|f0|c1|S0|d1|T1|g1|k1|q2|t"implement_auth"#"
-parsed = decode_message(wire)  # Back to SlipMessage
+# Decode
+msg = decode(wire)
+print(msg.anchor.canonical)  # "Request review of work"
 ```
 
 ## Installation
 
 ```bash
 pip install slipcore
+
+# With embedding-based quantization (optional)
+pip install slipcore[embeddings]
 ```
 
-## Token Economics
+## Key Features
 
-| Format | Tokens | Cost/1M msgs (GPT-4) | Daily @ 1M msgs |
-|--------|--------|---------------------|-----------------|
-| JSON verbose | 88 | $2.64 | $2,640 |
-| JSON minimal | 64 | $1.92 | $1,920 |
-| **nSLIP** | **32** | **$0.96** | **$960** |
+- **Token-aligned wire format** - No special characters that fragment in BPE
+- **Semantic quantization** - Meaning over compression
+- **UCR manifold** - 4-dimensional semantic space (ACTION, POLARITY, DOMAIN, URGENCY)
+- **Extension layer** - Add domain-specific anchors (0x8000-0xFFFF range)
+- **Finetuning support** - Train models to speak Slipstream natively
 
-**Savings: $960-1,680/day per million messages.**
-
-For swarms with 10K+ agents, this compounds fast.
-
-## Architecture
+## Wire Format
 
 ```
-Human <--natural language--> [Edge Agent]
-                                   |
-                            +-------------+
-                            | Coordinator | <--nSLIP--> [Memory]
-                            +-------------+
-                             | nSLIP    ^ nSLIP
-                        +--------+  +--------+
-                        |Planner |  | Critic |
-                        +--------+  +--------+
-                             | nSLIP
-                        +----------+
-                        | Executor |
-                        +----------+
+SLIP v1 <src> <dst> <anchor> [payload...]
 ```
 
-## Protocol Overview
+| Field | Description |
+|-------|-------------|
+| `SLIP v1` | Protocol marker |
+| `<src>` | Source agent |
+| `<dst>` | Destination agent |
+| `<anchor>` | UCR semantic anchor |
+| `[payload]` | Optional content |
 
-### Acts (Speech Acts)
-| Act | Code | Meaning |
-|-----|------|---------|
-| REQUEST | 3 | "Do this task" |
-| PROPOSE | 4 | "Here is my plan" |
-| COMMIT | 5 | "I will do it" |
-| INFORM | 1 | "Here is what happened" |
-| EVAL | 8 | "Score: 0.85" |
+## Core Anchors
 
-### Frames
-- `TASK` - Work to be done
-- `PLAN` - Proposed approach
-- `OBSERVATION` - Execution results
-- `EVALUATION` - Quality assessment
+| Category | Anchors |
+|----------|---------|
+| **Requests** | `RequestTask`, `RequestReview`, `RequestHelp`, `RequestPlan` |
+| **Info** | `InformComplete`, `InformProgress`, `InformBlocked`, `InformStatus` |
+| **Proposals** | `ProposePlan`, `ProposeChange`, `ProposeAlternative` |
+| **Evaluation** | `EvalApprove`, `EvalReject`, `EvalNeedsWork` |
+| **Meta** | `Accept`, `Reject`, `MetaAck`, `MetaHandoff`, `Fallback` |
 
-### Slots
-`goal_id`, `task_id`, `priority`, `status`, `score`, `tag`, `error_code`
+## Finetuning
 
-See [spec/slip-spec.md](spec/slip-spec.md) for the full protocol specification.
-
-## Finetuning Small Models
-
-The real power: train a 3B parameter model to speak nSLIP natively.
+Train models to speak Slipstream natively:
 
 ```bash
-# Generate training data
-python -m slipcore.generate_dataset_llm --num-conversations 1000 --output train.jsonl
+# Generate training dataset (template-based, free)
+python -m slipcore.finetune -n 1000 -f sharegpt -o train.jsonl
 
-# Finetune with Unsloth (see docs/FINETUNING.md)
+# Generate high-quality dataset (LLM-enhanced)
+pip install slipcore[llm]
+export ANTHROPIC_API_KEY="your-key"  # or OPENAI_API_KEY, TOGETHER_API_KEY
+python -m slipcore.finetune_llm -n 1000 --provider anthropic -o train.jsonl
 ```
 
-A finetuned Qwen-3B or Llama-3B can:
-- Parse nSLIP messages with 99%+ accuracy
-- Generate valid nSLIP responses
-- Run on consumer hardware (8GB VRAM)
-- Process 100+ messages/second locally
+Recommended model: **GLM-4-9B-0414** (MIT licensed, optimized for agentic tasks)
 
-**No API costs. No latency. Just fast, cheap agent coordination.**
+See [.claude/skills/slipstream-finetune.md](.claude/skills/slipstream-finetune.md) for full guide.
 
-## Use Cases
+## AAIF Integration
 
-### 1. Autonomous Coding Agents
-Coordinator dispatches file edits to executor agents. Each edit request/response is ~32 tokens instead of ~88.
+Slipstream is designed as the **transport layer** for the Linux Foundation Agentic AI ecosystem:
 
-### 2. Research Paper Analysis
-Swarm of specialized agents (summarizer, fact-checker, citation-finder) coordinate via nSLIP. 10x more agents, same token budget.
+```
+┌─────────────────────────────────────┐
+│   Application (Agent Logic)        │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│   MCP / A2A (Semantic Layer)        │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│   Slipstream (Transport Layer)      │  <- 80% token reduction
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│   Network                           │
+└─────────────────────────────────────┘
+```
 
-### 3. Game NPCs
-Hundreds of NPCs coordinating behavior through a central planner. nSLIP keeps latency low.
+## Token Efficiency
 
-### 4. IoT/Robotics Coordination
-Edge devices with limited compute run finetuned 3B models speaking nSLIP to coordinate actions.
-
-## Comparison to Alternatives
-
-| Approach | Tokens | Type Safety | Finetune-able |
-|----------|--------|-------------|---------------|
-| Raw JSON | 88 | No | Hard |
-| YAML | ~70 | No | Hard |
-| MessagePack | N/A | Partial | No |
-| Protobuf | N/A | Yes | No |
-| **nSLIP** | **32** | **Yes** | **Yes** |
-
-nSLIP is the only format designed for LLM token efficiency AND finetuning.
+| Format | Tokens | Savings |
+|--------|--------|---------|
+| JSON verbose | ~45 | baseline |
+| JSON minimal | ~30 | 33% |
+| **Slipstream** | **~5-8** | **80%+** |
 
 ## Project Structure
 
 ```
 slipcore/
 ├── src/slipcore/
-│   ├── protocol.py          # Core encoder/decoder
-│   ├── generate_dataset.py  # Template-based data gen
-│   └── generate_dataset_llm.py  # LLM-enhanced data gen
-├── data/finetune/
-│   └── train.jsonl          # 4,356 training examples
-├── docs/
-│   └── FINETUNING.md        # Unsloth/LoRA guide
-├── spec/
-│   └── slip-spec.md         # Protocol specification
-└── examples/
-    └── simple_roundtrip.py
+│   ├── ucr.py           # Universal Concept Reference
+│   ├── protocol.py      # Wire format
+│   ├── quantizer.py     # Think-Quantize-Transmit
+│   ├── extensions.py    # Local anchor learning
+│   ├── finetune.py      # Template dataset generation
+│   └── finetune_llm.py  # LLM-enhanced dataset generation
+├── examples/
+│   └── slipstream_demo.py
+└── spec/
+    └── slip-spec.md
 ```
 
 ## Contributing
 
-PRs welcome. Priority areas:
-- Additional framework integrations (CrewAI, AutoGen)
-- More training data diversity
-- Benchmarks vs JSON at scale
+1. Core UCR anchors are immutable within a version
+2. Add extension anchors for domain-specific needs
+3. Track fallback patterns to identify UCR gaps
+4. Submit popular extensions for core promotion
 
 ## License
 
-MIT
+Apache 2.0
 
 ---
 
-**Stop paying the JSON tax.** Your agents do not read curly brackets - why send them?
+**Stop paying the token tax.** Semantic quantization > syntactic compression.
 
 ```bash
 pip install slipcore
