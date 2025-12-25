@@ -20,7 +20,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.claude/
+
 # Virtual environments
 venv/
 ENV/
@@ -38,9 +38,6 @@ env/
 .coverage
 htmlcov/
 
-# Generated data (keep samples, ignore large generated files)
-data/finetune/*.generated.jsonl
-
 # OS
 .DS_Store
 Thumbs.db
@@ -48,6 +45,57 @@ Thumbs.db
 # Ruff
 .ruff_cache/
 
-#claude
-.claude_config.json
+# Claude Code
 .claude/settings.local.json
+
+# ============ Slipstream-specific ============
+
+# Generated datasets (keep samples, ignore large generated files)
+*.generated.jsonl
+slipstream_train*.jsonl
+train*.jsonl
+!data/slipstream_train.sample.jsonl
+
+# Model weights and checkpoints (too large for git)
+*.bin
+*.safetensors
+*.gguf
+*.ggml
+checkpoints/
+slipstream_*/
+*_lora/
+*_gguf/
+models/
+
+# Hugging Face cache
+.cache/
+huggingface/
+
+# API keys and secrets
+.env
+.env.*
+*.key
+secrets.json
+credentials.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/
+wandb/
+runs/
+tensorboard/
+
+# Large data files
+*.parquet
+*.arrow
+*.pkl
+*.pickle
+
+# Temp files
+tmp/
+temp/
+*.tmp

@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check src/
+
+      - name: Test imports
+        run: |
+          python -c "from slipcore import slip, decode, quantize, think_quantize_transmit"
+          python -c "from slipcore import UCR, UCRAnchor, Dimension, get_default_ucr"
+          python -c "from slipcore import ExtensionManager, FallbackTracker"
+          python -c "from slipcore import generate_dataset, TrainingExample"
+
+      - name: Test core functionality
+        run: |
+          python -c "
+          from slipcore import slip, decode, quantize
+
+          # Test encode/decode roundtrip
+          wire = slip('alice', 'bob', 'RequestReview', ['auth_module'])
+          msg = decode(wire)
+          assert msg.src == 'alice'
+          assert msg.dst == 'bob'
+          assert msg.anchor.mnemonic == 'RequestReview'
+          assert msg.payload == ['auth_module']
+
+          # Test quantization
+          result = quantize('please review my code')
+          assert result.anchor.mnemonic == 'RequestReview'
+
+          print('All tests passed!')
+          "
+
+      - name: Test dataset generation
+        run: |
+          python -c "
+          from slipcore import generate_training_examples
+          examples = generate_training_examples(num_examples=10)
+          assert len(examples) == 10
+          assert all(e.response.startswith('SLIP v1') for e in examples)
+          print(f'Generated {len(examples)} examples')
+          "
