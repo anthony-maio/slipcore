@@ -96,7 +96,7 @@ python -m slipcore.finetune_llm -n 1000 --provider anthropic -o train.jsonl
 
 Recommended model: **GLM-4-9B-0414** (MIT licensed, optimized for agentic tasks)
 
-See [.claude/skills/slipstream-finetune.md](.claude/skills/slipstream-finetune.md) for full guide.
+See [skills/slipstream-finetune.md](skills/slipstream-finetune.md) for full guide.
 
 ## AAIF Integration
 
