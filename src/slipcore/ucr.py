@@ -54,12 +54,14 @@ class UCRAnchor:
         canonical: Human-readable description
         coords: Position in the manifold (one value per dimension)
         is_core: True if part of standard UCR, False if extension
+        centroid: Optional embedding vector for ML-based quantization
     """
     index: int
     mnemonic: str
     canonical: str
     coords: tuple[int, ...]  # One int per dimension, each 0 to LEVELS_PER_DIM-1
     is_core: bool = True
+    centroid: Optional[list[float]] = None  # Embedding vector for ML quantization
 
     def __post_init__(self):
         if len(self.coords) != len(Dimension):
@@ -69,13 +71,16 @@ class UCRAnchor:
                 raise ValueError(f"coord[{i}] must be 0-{LEVELS_PER_DIM-1}, got {c}")
 
     def to_dict(self) -> dict:
-        return {
+        result = {
             "index": self.index,
             "mnemonic": self.mnemonic,
             "canonical": self.canonical,
             "coords": list(self.coords),
             "is_core": self.is_core,
         }
+        if self.centroid is not None:
+            result["centroid"] = self.centroid
+        return result
 
     @classmethod
     def from_dict(cls, d: dict) -> "UCRAnchor":
@@ -85,6 +90,7 @@ class UCRAnchor:
             canonical=d["canonical"],
             coords=tuple(d["coords"]),
             is_core=d.get("is_core", True),
+            centroid=d.get("centroid"),
         )
 
 

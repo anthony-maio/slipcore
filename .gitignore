@@ -98,4 +98,5 @@ tensorboard/
 # Temp files
 tmp/
 temp/
+v2_proposed/
 *.tmp

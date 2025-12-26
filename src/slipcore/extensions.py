@@ -4,23 +4,42 @@ UCR Extension Layer - Dynamic Local Anchors
 The extension layer allows installations to:
 1. Add custom anchors for domain-specific concepts (0x8000-0xFFFF range)
 2. Track fallback usage to identify candidates for new anchors
-3. Learn new anchors from repeated fallback patterns
+3. Learn new anchors from repeated fallback patterns (K-means or greedy clustering)
 4. Export extension data for potential promotion to core UCR
 
 Architecture:
 - Core UCR (0x0000-0x7FFF): Immutable standard
 - Extension UCR (0x8000-0xFFFF): Installation-specific, evolvable
+
+Enhanced with v3's K-means clustering for better extension learning.
 """
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List, Callable
 from collections import Counter
 from pathlib import Path
 import json
 import hashlib
 
 from .ucr import UCR, UCRAnchor, CORE_RANGE_END, get_default_ucr, Dimension, LEVELS_PER_DIM
+
+
+# ============ Optional Dependencies ============
+
+try:
+    import numpy as np
+    _HAS_NUMPY = True
+except ImportError:
+    np = None  # type: ignore
+    _HAS_NUMPY = False
+
+try:
+    from sklearn.cluster import MiniBatchKMeans
+    _HAS_SKLEARN = True
+except ImportError:
+    MiniBatchKMeans = None  # type: ignore
+    _HAS_SKLEARN = False
 
 
 # ============ Fallback Tracker ============
@@ -161,22 +180,35 @@ class ExtensionManager:
     """
     Manages the extension layer of a UCR installation.
 
+    Enhanced with v3's clustering capabilities:
+    - K-means clustering when sklearn available
+    - Greedy cosine clustering fallback
+    - Centroid computation for new anchors
+
     Handles:
     - Adding custom local anchors
-    - Learning from fallback patterns
+    - Learning from fallback patterns (ML-enhanced)
     - Exporting extensions for promotion consideration
     """
 
-    def __init__(self, ucr: Optional[UCR] = None):
+    def __init__(
+        self,
+        ucr: Optional[UCR] = None,
+        embed_batch: Optional[Callable] = None,
+        greedy_sim_threshold: float = 0.78,
+    ):
         self.ucr = ucr or get_default_ucr()
         self.fallback_tracker = FallbackTracker()
         self._extension_file: Optional[Path] = None
+        self._embed_batch = embed_batch  # Optional embedding function
+        self.greedy_sim_threshold = greedy_sim_threshold
 
     def add_extension(
         self,
         canonical: str,
         mnemonic: Optional[str] = None,
         coords: Optional[tuple[int, ...]] = None,
+        centroid: Optional[List[float]] = None,
     ) -> UCRAnchor:
         """
         Add a new extension anchor.
@@ -185,6 +217,7 @@ class ExtensionManager:
             canonical: Human-readable description of the concept
             mnemonic: Wire-format token (auto-generated if not provided)
             coords: Semantic coordinates (auto-estimated if not provided)
+            centroid: Embedding vector (computed if embed_batch available)
 
         Returns:
             The newly created anchor
@@ -202,6 +235,11 @@ class ExtensionManager:
         if coords is None:
             coords = _estimate_coords(canonical)
 
+        # Compute centroid if embedding function available
+        if centroid is None and self._embed_batch is not None and _HAS_NUMPY:
+            embeds = self._embed_batch([canonical])
+            centroid = embeds[0].tolist() if len(embeds) > 0 else None
+
         index = self.ucr.next_extension_index()
 
         anchor = UCRAnchor(
@@ -210,6 +248,7 @@ class ExtensionManager:
             canonical=canonical,
             coords=coords,
             is_core=False,
+            centroid=centroid,
         )
 
         self.ucr.add_anchor(anchor)
@@ -251,6 +290,9 @@ class ExtensionManager:
         """
         Automatically create extension anchors from frequent fallback patterns.
 
+        Uses pattern-based learning (n-gram detection).
+        For ML-based learning, use propose_extensions_ml().
+
         Args:
             min_count: Minimum occurrences before creating an anchor
 
@@ -264,6 +306,166 @@ class ExtensionManager:
                 anchor = self.add_extension(canonical)
                 new_anchors.append(anchor)
         return new_anchors
+
+    def propose_extensions_ml(
+        self,
+        fallback_texts: List[str],
+        min_cluster_size: int = 3,
+        max_new: int = 32,
+    ) -> List[UCRAnchor]:
+        """
+        Learn new anchors from fallback traffic using ML clustering.
+
+        This is the v3-style extension learning:
+        - Embed all fallback texts
+        - Cluster them (K-means if sklearn available, else greedy cosine)
+        - For each sufficiently large cluster:
+            - Choose exemplar closest to centroid
+            - Infer coordinates
+            - Mint new anchor
+
+        Args:
+            fallback_texts: List of fallback messages to cluster
+            min_cluster_size: Minimum messages in a cluster to create anchor
+            max_new: Maximum number of new anchors to create
+
+        Returns:
+            List of proposed new anchors (not yet added to UCR)
+        """
+        if not _HAS_NUMPY:
+            return []
+
+        buf = [t for t in fallback_texts if t and t.strip()]
+        if len(buf) < min_cluster_size:
+            return []
+
+        if self._embed_batch is None:
+            # No embeddings available, fall back to pattern-based
+            return []
+
+        # Embed all fallback texts
+        embeds = self._embed_batch(buf)
+
+        # Normalize rows
+        def _norm_rows(mat):
+            norms = np.linalg.norm(mat, axis=1, keepdims=True)
+            return mat / (norms + 1e-12)
+
+        embeds = _norm_rows(np.asarray(embeds, dtype=np.float32))
+
+        # Cluster
+        clusters: List[List[int]] = []
+
+        if _HAS_SKLEARN and len(buf) >= (min_cluster_size * 2):
+            # Use MiniBatchKMeans
+            k = max(1, min(max_new, len(buf) // max(1, min_cluster_size)))
+            km = MiniBatchKMeans(n_clusters=k, n_init="auto", random_state=42)
+            km.fit(embeds)
+            for i in range(k):
+                idxs = np.where(km.labels_ == i)[0].tolist()
+                if idxs:
+                    clusters.append(idxs)
+        else:
+            # Greedy cosine clustering (no sklearn)
+            centroids_list: List["np.ndarray"] = []
+            for i, v in enumerate(embeds):
+                placed = False
+                for c_idx, c in enumerate(centroids_list):
+                    if float(np.dot(v, c)) >= self.greedy_sim_threshold:
+                        clusters[c_idx].append(i)
+                        # Update centroid (mean then renormalize)
+                        new_c = np.mean(embeds[clusters[c_idx]], axis=0)
+                        n = np.linalg.norm(new_c)
+                        centroids_list[c_idx] = new_c / (n + 1e-12) if n > 0 else new_c
+                        placed = True
+                        break
+                if not placed:
+                    clusters.append([i])
+                    centroids_list.append(v.copy())
+
+        # Generate anchors from clusters
+        new_anchors: List[UCRAnchor] = []
+        minted = 0
+
+        for idxs in clusters:
+            if len(idxs) < min_cluster_size:
+                continue
+            if minted >= max_new:
+                break
+
+            # Cluster centroid
+            cluster_embeds = embeds[idxs]
+            centroid = np.mean(cluster_embeds, axis=0)
+            n = np.linalg.norm(centroid)
+            centroid = centroid / (n + 1e-12) if n > 0 else centroid
+
+            # Find exemplar (closest to centroid)
+            dists = np.linalg.norm(cluster_embeds - centroid, axis=1)
+            exemplar = buf[idxs[int(np.argmin(dists))]].strip()
+
+            # Infer coordinates
+            coords = _estimate_coords(exemplar)
+
+            # Generate mnemonic
+            mnemonic = _generate_mnemonic(exemplar)
+            # Add EXT_ prefix for extension anchors
+            mnemonic = f"EXT_{mnemonic}"
+
+            # Check uniqueness
+            base_mnemonic = mnemonic
+            counter = 1
+            while self.ucr.get_by_mnemonic(mnemonic) is not None:
+                mnemonic = f"{base_mnemonic}{counter}"
+                counter += 1
+
+            # Get next index
+            next_idx = self.ucr.next_extension_index()
+            if next_idx > 0xFFFF:
+                break  # Extension range exhausted
+
+            anchor = UCRAnchor(
+                index=next_idx,
+                mnemonic=mnemonic,
+                canonical=exemplar,
+                coords=coords,
+                is_core=False,
+                centroid=centroid.tolist(),
+            )
+
+            new_anchors.append(anchor)
+            minted += 1
+
+        return new_anchors
+
+    def learn_and_register(
+        self,
+        fallback_texts: List[str],
+        min_cluster_size: int = 3,
+        max_new: int = 32,
+    ) -> List[UCRAnchor]:
+        """
+        Learn new anchors from fallbacks and register them to the UCR.
+
+        Convenience method combining propose_extensions_ml + add to UCR.
+
+        Args:
+            fallback_texts: List of fallback messages
+            min_cluster_size: Minimum cluster size
+            max_new: Maximum new anchors
+
+        Returns:
+            List of newly registered anchors
+        """
+        proposed = self.propose_extensions_ml(fallback_texts, min_cluster_size, max_new)
+        registered = []
+        for anchor in proposed:
+            try:
+                self.ucr.add_anchor(anchor)
+                registered.append(anchor)
+            except ValueError:
+                # Skip duplicates
+                pass
+        return registered
 
     def export_extensions(self, path: Path) -> None:
         """Export extension anchors for promotion consideration."""

@@ -57,9 +57,13 @@ from .protocol import (
 from .quantizer import (
     QuantizeResult,
     KeywordQuantizer,
+    EmbeddingQuantizer,
+    CoordsInferer,
+    SemanticCoords,
     quantize,
     think_quantize_transmit,
     create_quantizer,
+    infer_coords,
 )
 
 # Extensions - dynamic local anchors
@@ -113,9 +117,13 @@ __all__ = [
     # Quantizer
     "QuantizeResult",
     "KeywordQuantizer",
+    "EmbeddingQuantizer",
+    "CoordsInferer",
+    "SemanticCoords",
     "quantize",
     "think_quantize_transmit",
     "create_quantizer",
+    "infer_coords",
     # Extensions
     "ExtensionManager",
     "FallbackTracker",
