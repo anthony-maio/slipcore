@@ -93,6 +93,17 @@ try:
 except ImportError:
     _HAS_LLM_FINETUNE = False
 
+# UCR Builder - corpus-based construction (requires numpy, sentence-transformers)
+try:
+    from .builder import (
+        UCRBuilder,
+        BuildStats,
+        build_ucr_from_corpus,
+    )
+    _HAS_BUILDER = True
+except ImportError:
+    _HAS_BUILDER = False
+
 __all__ = [
     # Version
     "__version__",
@@ -138,4 +149,8 @@ __all__ = [
     "generate_dataset_llm",
     "LLMExample",
     "LLM_PROVIDERS",
+    # UCR Builder (optional)
+    "UCRBuilder",
+    "BuildStats",
+    "build_ucr_from_corpus",
 ]

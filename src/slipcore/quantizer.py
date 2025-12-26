@@ -75,7 +75,38 @@ class CoordsInferer:
     - Heuristics for urgency and polarity (reliable, fast)
     - Optional prototype embedding similarity for action/domain refinement
 
-    This is ported from v3's sophisticated coordinate inference system.
+    LIMITATIONS AND CAVEATS:
+    ========================
+
+    1. HEURISTIC FRAGILITY:
+       - Keyword matching is context-blind ("please" could be polite or pleading)
+       - Urgency detection relies on explicit markers ("ASAP", "urgent")
+       - Domain detection depends on domain-specific vocabulary
+
+    2. PROTOTYPE EMBEDDING ISSUES:
+       - Limited prototype phrases (3 per action, 2 per domain)
+       - English-only prototypes; other languages will use fallback
+       - Short messages may not have enough signal for reliable similarity
+
+    3. KNOWN FAILURE MODES:
+       - Sarcasm/irony: "Great, another bug" -> incorrectly infers positive polarity
+       - Questions phrased as statements: "I wonder if..." -> misses ASK action
+       - Multi-intent: "Review and deploy this" -> only captures first action
+       - Implicit urgency: "CEO is waiting" -> misses critical urgency
+
+    4. RECOMMENDED USAGE:
+       - Use as initialization for finetuned models, not production truth
+       - Always validate inferred coords against anchor centroids
+       - Track fallback rate; >15% indicates poor UCR coverage
+       - For production: finetune a small model on CoordsInferer output
+
+    5. ACCURACY ESTIMATES (informal testing):
+       - Urgency:  ~80% (explicit markers work well)
+       - Polarity: ~70% (sentiment is hard)
+       - Action:   ~65% with embeddings, ~55% heuristic-only
+       - Domain:   ~60% (highly vocabulary-dependent)
+
+    Ported from v3's coordinate inference system.
     """
 
     def __init__(self, embed_batch: Optional[Callable] = None):

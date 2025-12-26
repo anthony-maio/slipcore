@@ -41,7 +41,7 @@ PROVIDERS = {
     "anthropic": {
         "base_url": "https://api.anthropic.com",
         "env_key": "ANTHROPIC_API_KEY",
-        "default_model": "claude-sonnet-4-20250514",
+        "default_model": "claude-haiku-4-5",
     },
     "openai": {
         "base_url": "https://api.openai.com/v1",
