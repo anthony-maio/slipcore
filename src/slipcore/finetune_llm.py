@@ -1,24 +1,30 @@
 """
 LLM-Enhanced Slipstream Dataset Generator
 
-Generates high-quality training data using LLM APIs (Claude, OpenAI, Together, etc.)
-for more diverse, realistic examples than template-based generation.
+Generates high-quality Think-Quantize-Transmit training data using LLM APIs.
+More diverse, realistic examples than template-based generation.
 
 Supports:
-- Anthropic Claude API
-- OpenAI API
+- Anthropic Claude API (claude-sonnet-4, claude-haiku)
+- Google Gemini API (gemini-2.5-flash, gemini-2.0-flash)
+- OpenAI API (gpt-4o-mini, gpt-4o)
 - Together.ai API
 - Any OpenAI-compatible endpoint
 
 Usage:
-    # With Claude API
+    # With Claude (1000 examples)
     python -m slipcore.finetune_llm -n 1000 --provider anthropic --model claude-sonnet-4-20250514
 
-    # With OpenAI
-    python -m slipcore.finetune_llm -n 1000 --provider openai --model gpt-4o-mini
+    # With Gemini 2.5 Flash (1000 examples)
+    python -m slipcore.finetune_llm -n 1000 --provider gemini --model gemini-2.5-flash
 
-    # With Together.ai (cheaper)
-    python -m slipcore.finetune_llm -n 1000 --provider together --model meta-llama/Llama-3-70b-chat-hf
+    # Combined dataset: 1000 Claude + 1000 Gemini
+    python -m slipcore.finetune_llm -n 1000 --provider anthropic -o train_claude.jsonl
+    python -m slipcore.finetune_llm -n 1000 --provider gemini -o train_gemini.jsonl
+    cat train_claude.jsonl train_gemini.jsonl > train_combined.jsonl
+
+    # With TQT (Think-Quantize-Transmit) format
+    python -m slipcore.finetune_llm -n 1000 -f sharegpt_thought --provider gemini
 """
 
 from __future__ import annotations
@@ -42,6 +48,11 @@ PROVIDERS = {
         "base_url": "https://api.anthropic.com",
         "env_key": "ANTHROPIC_API_KEY",
         "default_model": "claude-haiku-4-5",
+    },
+    "gemini": {
+        "base_url": "https://generativelanguage.googleapis.com/v1beta",
+        "env_key": "GEMINI_API_KEY",
+        "default_model": "gemini-2.5-flash",
     },
     "openai": {
         "base_url": "https://api.openai.com/v1",
@@ -72,10 +83,11 @@ SCENARIO_GENERATION_PROMPT = """You are generating training data for the Slipstr
 
 Generate {batch_size} diverse, realistic scenarios where AI agents need to communicate. For each scenario, provide:
 1. A natural language instruction (what a user might say)
-2. The source agent name
-3. The destination agent name
-4. The appropriate Slipstream anchor (intent)
-5. Optional payload (additional context)
+2. The agent's internal thought/reasoning about this communication
+3. The source agent name
+4. The destination agent name
+5. The appropriate Slipstream anchor (intent)
+6. Optional payload (additional context)
 
 Available anchors and their meanings:
 - RequestTask: Ask another agent to perform a task
@@ -112,15 +124,25 @@ Output as JSON array:
 [
   {{
     "instruction": "Tell the ML team to retrain the model with the new dataset",
+    "thought": "The new dataset is ready and I need the ML team to update the model",
     "src": "data_engineer",
     "dst": "ml_team",
     "anchor": "RequestTask",
     "payload": ["retrain", "new_dataset"]
   }},
+  {{
+    "instruction": "Check if the kubernetes pods are healthy",
+    "thought": "This is a specific infrastructure check that doesn't map to standard anchors",
+    "src": "devops",
+    "dst": "infra",
+    "anchor": "Fallback",
+    "payload": ["check_kubernetes_pod_health"]
+  }},
   ...
 ]
 
-Generate exactly {batch_size} examples. Be creative and diverse!"""
+Generate exactly {batch_size} examples. Be creative and diverse!
+Include some Fallback examples for complex/domain-specific requests that don't fit standard anchors."""
 
 
 VALIDATION_PROMPT = """Validate this Slipstream training example. Check:
@@ -199,6 +221,70 @@ def call_openai_compatible(
     return response.json()["choices"][0]["message"]["content"]
 
 
+def call_gemini(messages: list[dict], model: str, api_key: str) -> str:
+    """
+    Call Google Gemini API.
+
+    Supports gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-pro, etc.
+    """
+    import httpx
+
+    # Convert messages to Gemini format
+    # Gemini uses "contents" with "parts" structure
+    system_instruction = None
+    contents = []
+
+    for msg in messages:
+        role = msg["role"]
+        content = msg["content"]
+
+        if role == "system":
+            system_instruction = content
+        elif role == "user":
+            contents.append({
+                "role": "user",
+                "parts": [{"text": content}]
+            })
+        elif role == "assistant":
+            contents.append({
+                "role": "model",
+                "parts": [{"text": content}]
+            })
+
+    # Build request payload
+    payload = {
+        "contents": contents,
+        "generationConfig": {
+            "temperature": 0.8,
+            "maxOutputTokens": 4096,
+        }
+    }
+
+    if system_instruction:
+        payload["systemInstruction"] = {
+            "parts": [{"text": system_instruction}]
+        }
+
+    # Gemini API endpoint
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+
+    response = httpx.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        timeout=120,
+    )
+    response.raise_for_status()
+
+    result = response.json()
+
+    # Extract text from response
+    try:
+        return result["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError) as e:
+        raise ValueError(f"Unexpected Gemini response format: {result}") from e
+
+
 def call_llm(
     messages: list[dict],
     provider: str,
@@ -208,6 +294,8 @@ def call_llm(
     """Unified LLM caller."""
     if provider == "anthropic":
         return call_anthropic(messages, model, api_key)
+    elif provider == "gemini":
+        return call_gemini(messages, model, api_key)
     else:
         base_url = PROVIDERS[provider]["base_url"]
         return call_openai_compatible(messages, model, api_key, base_url)
@@ -224,6 +312,7 @@ class LLMExample:
     anchor: str
     payload: list[str]
     wire: str
+    thought: str = ""  # Natural language reasoning for TQT training
 
 
 def generate_batch(
@@ -241,23 +330,52 @@ def generate_batch(
 
     response = call_llm(messages, provider, model, api_key)
 
-    # Parse JSON from response
-    # Handle markdown code blocks if present
+    # Parse JSON from response - handle various LLM output quirks
     text = response.strip()
+
+    # Remove markdown code blocks
     if text.startswith("```"):
         lines = text.split("\n")
-        text = "\n".join(lines[1:-1])
+        # Remove first line (```json) and last line (```)
+        text = "\n".join(lines[1:])
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+
+    # Try to extract JSON array
+    import re
+    match = re.search(r'\[[\s\S]*\]', text)
+    if match:
+        text = match.group()
+
+    # Fix common JSON issues from LLMs
+    # 1. Remove trailing commas before ] or }
+    text = re.sub(r',\s*([}\]])', r'\1', text)
+    # 2. Fix unescaped newlines in strings (replace with \n)
+    # 3. Remove control characters
+    text = re.sub(r'[\x00-\x1f]', ' ', text)
 
     try:
         scenarios = json.loads(text)
-    except json.JSONDecodeError:
-        # Try to extract JSON array
-        import re
-        match = re.search(r'\[.*\]', text, re.DOTALL)
-        if match:
-            scenarios = json.loads(match.group())
-        else:
-            print(f"Failed to parse response: {text[:200]}...")
+    except json.JSONDecodeError as e:
+        # Try line by line parsing for partial recovery
+        scenarios = []
+        try:
+            # Attempt to parse each object individually
+            obj_matches = re.findall(r'\{[^{}]*\}', text)
+            for obj_str in obj_matches:
+                try:
+                    obj = json.loads(obj_str)
+                    if "instruction" in obj and "anchor" in obj:
+                        scenarios.append(obj)
+                except json.JSONDecodeError:
+                    continue
+            if scenarios:
+                print(f"Partial recovery: {len(scenarios)} examples from malformed JSON")
+        except Exception:
+            pass
+
+        if not scenarios:
+            print(f"JSON parse error: {e}")
             return []
 
     examples = []
@@ -272,6 +390,11 @@ def generate_batch(
             wire_parts.extend(payload)
             wire = " ".join(wire_parts)
 
+            # Extract thought (generate one if not provided)
+            thought = scenario.get("thought", "")
+            if not thought:
+                thought = f"I need to {scenario['anchor'].lower()} to {scenario['dst']}"
+
             examples.append(LLMExample(
                 instruction=scenario["instruction"],
                 src=scenario["src"],
@@ -279,6 +402,7 @@ def generate_batch(
                 anchor=scenario["anchor"],
                 payload=payload,
                 wire=wire,
+                thought=thought,
             ))
         except (KeyError, TypeError) as e:
             print(f"Skipping malformed scenario: {e}")
@@ -318,28 +442,94 @@ def to_alpaca(example: LLMExample) -> dict:
     }
 
 
+# ============ Think-Quantize-Transmit Converters ============
+
+def to_sharegpt_thought(example: LLMExample, system_prompt: str) -> dict:
+    """Convert to ShareGPT format with THOUGHT supervision (recommended for TQT training)."""
+    response = f"THOUGHT: {example.thought}\nSLIP: {example.wire}"
+    return {
+        "conversations": [
+            {"from": "system", "value": system_prompt},
+            {"from": "human", "value": example.instruction},
+            {"from": "gpt", "value": response},
+        ]
+    }
+
+
+def to_chat_thought(example: LLMExample, system_prompt: str) -> dict:
+    """Convert to chat format with THOUGHT supervision."""
+    response = f"THOUGHT: {example.thought}\nSLIP: {example.wire}"
+    return {
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": example.instruction},
+            {"role": "assistant", "content": response},
+        ]
+    }
+
+
+def to_sharegpt_semantics(example: LLMExample, system_prompt: str) -> dict:
+    """Convert to ShareGPT with full semantic annotation (maximum supervision)."""
+    # Infer UCR dimensions from anchor
+    from .ucr import get_default_ucr
+    from .finetune import _get_dimension_labels
+
+    ucr = get_default_ucr()
+    anchor_obj = ucr.get_by_mnemonic(example.anchor)
+
+    dims = []
+    if anchor_obj:
+        labels = _get_dimension_labels(anchor_obj.coords)
+        if labels.get("action"):
+            dims.append(f"ACTION={labels['action']}")
+        if labels.get("domain"):
+            dims.append(f"DOMAIN={labels['domain']}")
+        if labels.get("urgency"):
+            dims.append(f"URGENCY={labels['urgency']}")
+        if labels.get("polarity"):
+            dims.append(f"POLARITY={labels['polarity']}")
+
+    semantic_hint = " | ".join(dims) if dims else f"ANCHOR={example.anchor}"
+
+    response = (
+        f"THOUGHT: {example.thought}\n"
+        f"QUANTIZE: [{semantic_hint}] -> {example.anchor}\n"
+        f"SLIP: {example.wire}"
+    )
+
+    return {
+        "conversations": [
+            {"from": "system", "value": system_prompt},
+            {"from": "human", "value": example.instruction},
+            {"from": "gpt", "value": response},
+        ]
+    }
+
+
 def generate_dataset_llm(
     output_path: Path,
     num_examples: int = 1000,
     provider: str = "anthropic",
     model: Optional[str] = None,
     api_key: Optional[str] = None,
-    format: str = "sharegpt",
+    format: str = "sharegpt_thought",
     system_prompt: str = SYSTEM_PROMPT_BASIC,
     batch_size: int = 25,
     max_workers: int = 4,
     delay_between_batches: float = 0.5,
 ) -> int:
     """
-    Generate a high-quality dataset using LLM APIs.
+    Generate a high-quality Think-Quantize-Transmit dataset using LLM APIs.
 
     Args:
         output_path: Where to save the JSONL file
         num_examples: Target number of examples
-        provider: API provider (anthropic, openai, together, fireworks, deepseek)
+        provider: API provider (anthropic, gemini, openai, together, fireworks, deepseek)
         model: Model name (uses provider default if not specified)
         api_key: API key (reads from env if not specified)
-        format: Output format (sharegpt, chat, alpaca)
+        format: Output format:
+            - Basic: sharegpt, chat, alpaca (instruction -> SLIP)
+            - TQT: sharegpt_thought, chat_thought, sharegpt_semantics (includes THOUGHT)
         system_prompt: System prompt for training examples
         batch_size: Examples per API call
         max_workers: Parallel API calls
@@ -371,11 +561,16 @@ def generate_dataset_llm(
     all_examples: list[LLMExample] = []
 
     converters = {
+        # Basic formats (instruction -> SLIP only)
         "sharegpt": lambda e: to_sharegpt(e, system_prompt),
         "chat": lambda e: to_chat(e, system_prompt),
         "alpaca": to_alpaca,
+        # TQT formats (Think-Quantize-Transmit supervision)
+        "sharegpt_thought": lambda e: to_sharegpt_thought(e, system_prompt),
+        "chat_thought": lambda e: to_chat_thought(e, system_prompt),
+        "sharegpt_semantics": lambda e: to_sharegpt_semantics(e, system_prompt),
     }
-    converter = converters.get(format, converters["sharegpt"])
+    converter = converters.get(format, converters["sharegpt_thought"])
 
     # Generate in batches
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -458,9 +653,12 @@ def main():
     )
     parser.add_argument(
         "-f", "--format",
-        choices=["chat", "alpaca", "sharegpt"],
-        default="sharegpt",
-        help="Output format",
+        choices=[
+            "chat", "alpaca", "sharegpt",  # Basic
+            "chat_thought", "sharegpt_thought", "sharegpt_semantics",  # TQT
+        ],
+        default="sharegpt_thought",
+        help="Output format. TQT formats (sharegpt_thought, sharegpt_semantics) recommended",
     )
     parser.add_argument(
         "--batch-size",

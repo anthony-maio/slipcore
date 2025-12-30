@@ -9,21 +9,26 @@
 Traditional approaches compress the *syntax* of messages. Slipstream quantizes the *semantics*:
 
 ```
-Traditional:  "Please review this code for security issues"  (~12 tokens)
-              ↓ (minify)
-              "REQ/REV|sec"  (~6 tokens, but BPE fragments to ~10)
+# Token counts verified with cl100k_base (GPT-4) tokenizer:
 
-Slipstream:   "Please review this code for security issues"  (~12 tokens)
-              ↓ (semantic quantization)
-              "SLIP v1 alice bob RequestReview"  (5 tokens)
+Natural:      "Please review the authentication code"       (8 tokens)
+JSON:         {"act":"RequestReview","src":"dev",...}       (19 tokens)
+SLIP:         SLIP v1 dev reviewer RequestReview            (10 tokens)
 ```
 
 ### Goals
 
-- **Token efficiency**: 70-80% reduction vs JSON-wrapped natural language
+- **Semantic consistency**: Same intent → same parseable wire format
+- **Token efficiency**: ~50% reduction vs JSON, competitive with natural language
 - **Model agnostic**: Works across GPT-4, Claude, Llama, etc.
 - **BPE friendly**: No special characters that fragment in tokenizers
 - **Evolvable**: Core standard + extension layer for local concepts
+
+### Honest Trade-offs
+
+For short messages, natural language can be more token-efficient than SLIP.
+SLIP's value is **structured semantics** (parseable, schema-driven) plus significant
+savings over JSON/XML formats commonly used in agent frameworks.
 
 ---
 
@@ -70,14 +75,17 @@ UCRAnchor(
 SLIP <version> <src> <dst> <anchor> [payload...]
 ```
 
-| Field | Description | Tokens |
-|-------|-------------|--------|
-| `SLIP` | Protocol marker | 1 |
-| `<version>` | Protocol version (e.g., `v1`) | 1 |
-| `<src>` | Source agent identifier | 1 |
-| `<dst>` | Destination agent identifier | 1 |
-| `<anchor>` | UCR mnemonic (e.g., `RequestReview`) | 1 |
+| Field | Description | Typical Tokens |
+|-------|-------------|----------------|
+| `SLIP` | Protocol marker | 2 |
+| `<version>` | Protocol version (e.g., `v1`) | 1-2 |
+| `<src>` | Source agent identifier | 1-2 |
+| `<dst>` | Destination agent identifier | 1-2 |
+| `<anchor>` | UCR mnemonic (e.g., `RequestReview`) | 1-3 |
 | `[payload...]` | Optional unquantizable content | variable |
+
+*Token counts vary by tokenizer. Above estimates use cl100k_base (GPT-4).
+A typical message like `SLIP v1 alice bob RequestReview` = 8 tokens.*
 
 ### 3.2 Design Principles
 
@@ -196,7 +204,7 @@ Slipstream operates at the **transport layer** beneath MCP and A2A:
 │   Encode: Intent → UCR index        │
 │   Wire: SLIP v1 A B Anchor          │
 └────────────────┬────────────────────┘
-                 │ 5 tokens (vs 50)
+                 │ ~10 tokens (vs ~20 JSON)
 ┌────────────────▼────────────────────┐
 │   Network (HTTP, WebSocket, etc.)   │
 └─────────────────────────────────────┘
@@ -249,7 +257,32 @@ print(msg.anchor.canonical)  # "Request review of work"
 
 ---
 
-## 10. Future Extensions
+## 10. Benchmark Results
+
+Run with `python -m slipcore.benchmark` to verify. Results with cl100k_base (GPT-4):
+
+| Metric | Value |
+|--------|-------|
+| Test cases | 20 realistic agent messages |
+| Overall reduction vs natural | 13.1% |
+| Average per-case reduction | 9.2% |
+| Range | -33.3% to +40.9% |
+
+### Format Comparison (same message)
+
+| Format | Tokens |
+|--------|--------|
+| Natural language | 8 |
+| SLIP v1 | 10 |
+| JSON compact | 19 |
+| JSON full | 20 |
+
+**Key insight**: SLIP saves ~50% vs JSON but can exceed natural language for short messages.
+The primary value is **structured semantics** (parseable, schema-driven) not raw token savings.
+
+---
+
+## 11. Future Extensions
 
 - **Hierarchical UCR**: Multi-level codebooks for domain specialization
 - **Federated evolution**: Cross-installation UCR improvement

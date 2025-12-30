@@ -1,0 +1,26 @@
+ ; Slipstream (SLIP) wire format — ABNF (token-friendly profile)
+;
+; NOTE: This ABNF describes the *recommended* profile for token-friendly usage.
+; A2A SLIP extension expects this profile when embedding SLIP in Message.parts[].text.
+
+SLIP-MESSAGE = "SLIP" SP VERSION SP AGENTID SP AGENTID SP ANCHOR *(SP PAYLOAD)
+VERSION      = "v" 1*DIGIT
+
+; Agent IDs should be short, stable, and tokenizer-friendly.
+AGENTID      = 1*(ALPHA / DIGIT / "-" / "_" / ".")
+
+; Anchor mnemonics SHOULD be CamelCase and avoid punctuation.
+ANCHOR       = 1*(ALPHA / DIGIT)
+
+; Payload tokens are optional and are single tokens (no spaces).
+; Prefer safe identifiers. For free-form text, use FALLBACK (see below).
+PAYLOAD      = SAFE / QUOTED
+
+SAFE         = 1*(ALPHA / DIGIT / "." / "-" / "_" )
+QUOTED       = DQUOTE *(QCHAR) DQUOTE
+QCHAR        = %x20-21 / %x23-5B / %x5D-7E  ; any printable except DQUOTE and "\"
+
+SP           = %x20
+ALPHA        = %x41-5A / %x61-7A
+DIGIT        = %x30-39
+DQUOTE       = %x22
