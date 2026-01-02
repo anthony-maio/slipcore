@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slipcore"
-version = "2.0.0"
+version = "2.4.0"
 description = "Slipstream Protocol - Semantic Quantization for Efficient Multi-Agent Coordination"
 readme = "README.md"
 license = {text = "Apache-2.0"}

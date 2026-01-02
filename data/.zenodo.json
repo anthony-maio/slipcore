@@ -1,0 +1,62 @@
+{
+  "title": "Slipstream Think-Quantize-Transmit Dataset",
+  "description": "Training dataset for the Slipstream protocol - a semantic quantization system achieving 82% token reduction in multi-agent AI communication. Contains 2,283 examples teaching the Think-Quantize-Transmit (TQT) cognitive pattern: reasoning about intent, mapping to semantic anchors in a 4D manifold (ACTION, POLARITY, DOMAIN, URGENCY), and outputting compact wire-format messages.\n\nDataset includes:\n- 21 semantic anchor types (RequestTask, InformComplete, EvalApprove, etc.)\n- 8% fallback/negative examples (teaching when NOT to quantize)\n- Full THOUGHT + QUANTIZE + SLIP supervision\n- ShareGPT format (compatible with Unsloth, Axolotl, LLaMA-Factory)\n\nPart of the slipcore reference implementation for the Linux Foundation AAIF ecosystem.",
+  "creators": [
+    {
+      "name": "Maio, Anthony",
+      "affiliation": "Independent Researcher",
+      "orcid": ""
+    }
+  ],
+  "keywords": [
+    "multi-agent systems",
+    "LLM finetuning",
+    "semantic quantization",
+    "agent communication",
+    "token efficiency",
+    "agentic AI",
+    "instruction tuning",
+    "ShareGPT",
+    "training dataset"
+  ],
+  "license": "Apache-2.0",
+  "upload_type": "dataset",
+  "publication_date": "2025-01-01",
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/anthony-maio/slipcore",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://huggingface.co/datasets/anthony-maio/slipstream-tqt",
+      "relation": "isIdenticalTo",
+      "resource_type": "dataset",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://huggingface.co/anthonym21/slipstream-glm-z1-9b",
+      "relation": "isSupplementedBy",
+      "resource_type": "model",
+      "scheme": "url"
+    }
+  ],
+  "subjects": [
+    {
+      "term": "Computer Science - Artificial Intelligence",
+      "scheme": "arxiv"
+    },
+    {
+      "term": "Computer Science - Computation and Language",
+      "scheme": "arxiv"
+    },
+    {
+      "term": "Computer Science - Multiagent Systems",
+      "scheme": "arxiv"
+    }
+  ],
+  "notes": "Format: JSONL (ShareGPT). 2,283 training examples. Compatible with Unsloth, Axolotl, LLaMA-Factory, and other LLM finetuning frameworks."
+}

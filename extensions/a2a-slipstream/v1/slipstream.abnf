@@ -1,4 +1,4 @@
- ; Slipstream (SLIP) wire format — ABNF (token-friendly profile)
+; Slipstream (SLIP) wire format — ABNF (token-friendly profile)
 ;
 ; NOTE: This ABNF describes the *recommended* profile for token-friendly usage.
 ; A2A SLIP extension expects this profile when embedding SLIP in Message.parts[].text.

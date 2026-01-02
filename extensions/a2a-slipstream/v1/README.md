@@ -1,8 +1,8 @@
 # Slipstream over A2A (SLIP-A2A) Extension — Draft v0.1
 
-This document defines a token-friendly way to carry **Slipstream (SLIP)** wire-format messages inside the **Agent2Agent (A2A)** protocol using A2A’s built-in extension mechanism.
+This document defines a token-friendly way to carry **Slipstream (SLIP)** wire-format messages inside the **Agent2Agent (A2A)** protocol using A2A's built-in extension mechanism.
 
-> Design intent: **A2A stays the interoperability contract** (discovery, tasks, streaming, artifacts).  
+> Design intent: **A2A stays the interoperability contract** (discovery, tasks, streaming, artifacts).
 > **Slipstream is the content encoding** that makes the *message body* cheap for LLMs to read/write.
 
 ---
@@ -14,8 +14,8 @@ This document defines a token-friendly way to carry **Slipstream (SLIP)** wire-f
 https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1
 ```
 This URI is used:
-- in the Agent Card’s `capabilities.extensions[]` list,
-- in the request “service parameter” `A2A-Extensions`,
+- in the Agent Card's `capabilities.extensions[]` list,
+- in the request "service parameter" `A2A-Extensions`,
 - inside `message.extensions[]` and `message.metadata{}` for per-message opt-in.
 
 ---
@@ -97,7 +97,7 @@ Example:
 SLIP v1 planner reviewer RequestReview auth_module
 ```
 
-### 3.2 Why “text part” (not JSON)
+### 3.2 Why "text part" (not JSON)
 
 - This keeps the *LLM-visible* content **space-delimited** and avoids punctuation that BPE tokenizers fragment.
 - The A2A envelope remains normal JSON for transport/tooling, but the part the model reads/writes is compact.
@@ -139,7 +139,7 @@ To preserve token-friendliness, SLIP-A2A imposes additional constraints on the S
 1. **Anchors MUST be mnemonics**, not hex IDs (no `0x...` in-wire).
 2. The wire text MUST use **spaces as the only structural delimiter**.
 3. The wire text MUST NOT require punctuation markers like `|`, `{}`, `=`, `@`, `#` to be parsed.
-4. Payload tokens SHOULD be “safe identifiers”: `[A-Za-z0-9._-]+`.
+4. Payload tokens SHOULD be "safe identifiers": `[A-Za-z0-9._-]+`.
 5. If arbitrary free-form text must be sent, use the `Fallback` anchor and carry the text in a single quoted payload token, or send a second plain `text/plain` part.
 
 ---

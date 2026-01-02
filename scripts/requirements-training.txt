@@ -1,0 +1,32 @@
+# Slipstream Training Requirements
+#
+# Install with: pip install -r scripts/requirements-training.txt
+#
+# Note: Install PyTorch with CUDA first if on GPU:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+# Unsloth - Fast finetuning
+unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
+
+# Core dependencies (no-deps to avoid conflicts)
+--no-deps trl>=0.7.0
+--no-deps peft>=0.10.0
+accelerate>=0.28.0
+bitsandbytes>=0.43.0
+
+# Hugging Face
+transformers>=4.40.0
+datasets>=2.18.0
+huggingface_hub>=0.22.0
+
+# Training utilities
+safetensors>=0.4.0
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+
+# For GGUF export
+# llama-cpp-python  # Optional, for local GGUF testing
+
+# Monitoring (optional)
+# wandb  # For experiment tracking
+# tensorboard  # Alternative tracking

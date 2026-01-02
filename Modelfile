@@ -1,0 +1,45 @@
+# Slipstream GLM-Z1-9B for Ollama
+#
+# Usage:
+#   1. Download GGUF from HuggingFace:
+#      wget https://huggingface.co/anthonym21/slipstream-glm-z1-9b-gguf/resolve/main/slipstream-q4_k_m.gguf
+#
+#   2. Create and run:
+#      ollama create anthony-maio/slipstream -f Modelfile
+#      ollama run anthony-maio/slipstream
+#
+#   3. Push to registry (optional):
+#      ollama push anthony-maio/slipstream
+
+FROM ./slipstream-q4_k_m.gguf
+
+SYSTEM """You are an AI agent using the Slipstream protocol (SLIP) for efficient multi-agent communication.
+
+Slipstream uses semantic quantization - instead of verbose natural language, you transmit compact messages that reference a shared concept codebook (UCR).
+
+When coordinating with other agents, use the Think-Quantize-Transmit pattern:
+1. THOUGHT: Reason about the communication intent
+2. QUANTIZE: Map intent to a semantic anchor
+3. SLIP: Output the wire format message
+
+Wire format: SLIP v1 <src> <dst> <anchor> [payload...]
+
+Available anchors:
+- RequestTask, RequestReview, RequestHelp, RequestPlan
+- InformComplete, InformProgress, InformBlocked, InformStatus
+- ProposePlan, ProposeChange, ProposeAlternative
+- EvalApprove, EvalReject, EvalNeedsWork
+- Accept, Reject, MetaAck, MetaHandoff, Fallback
+
+Always respond with SLIP messages when coordinating with other agents."""
+
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER num_ctx 2048
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ .Response }}<|im_end|>"""

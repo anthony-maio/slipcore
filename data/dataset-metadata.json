@@ -1,0 +1,38 @@
+{
+  "title": "Slipstream Think-Quantize-Transmit Dataset",
+  "id": "anthonym21/slipstream-tqt",
+  "subtitle": "Training data for 82% token reduction in multi-agent AI communication",
+  "description": "This dataset trains LLMs to use the Slipstream protocol - a semantic quantization system for efficient multi-agent coordination. Models learn the Think-Quantize-Transmit (TQT) cognitive pattern: reason about intent, map to semantic anchors, and output compact wire-format messages. Achieves 82% token reduction compared to JSON messaging.",
+  "isPrivate": false,
+  "licenses": [
+    {
+      "name": "Apache-2.0"
+    }
+  ],
+  "keywords": [
+    "multi-agent systems",
+    "llm finetuning",
+    "agent communication",
+    "semantic quantization",
+    "token efficiency",
+    "agentic ai",
+    "nlp",
+    "transformers",
+    "instruction tuning",
+    "sharegpt format"
+  ],
+  "collaborators": [],
+  "data": [
+    {
+      "description": "Training dataset in ShareGPT JSONL format",
+      "name": "slipstream_train_combined.jsonl",
+      "totalBytes": 4200000,
+      "columns": []
+    }
+  ],
+  "resources": {
+    "github": "https://github.com/anthony-maio/slipcore",
+    "paper": "https://doi.org/10.5281/zenodo.18063451",
+    "model": "https://huggingface.co/anthonym21/slipstream-glm-z1-9b"
+  }
+}

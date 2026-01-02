@@ -156,6 +156,66 @@ Slipstream is designed for the Linux Foundation Agentic AI ecosystem:
 └─────────────────────────────────────┘
 ```
 
+## Finetuning (Colab + Unsloth)
+
+### Quick Start
+
+```bash
+# Generate dataset locally
+python -m slipcore.finetune_llm -n 1000 --provider gemini -o train.jsonl
+
+# Or use the pre-built dataset
+# data/slipstream_train_combined.jsonl (2,283 examples)
+```
+
+Then upload to Colab and finetune with Unsloth.
+
+### Colab Gotchas
+
+**Memory crashes during GGUF export:**
+```python
+# Clear cache before export
+import torch
+import gc
+gc.collect()
+torch.cuda.empty_cache()
+
+# Then run export
+model.save_pretrained_gguf(...)
+```
+
+**Runtime restart loses model:**
+```python
+# Reload from checkpoint after crash
+from unsloth import FastLanguageModel
+model, tokenizer = FastLanguageModel.from_pretrained("outputs/checkpoint-xxx")
+```
+
+**Runtime restart loses libraries:**
+```python
+# Auto-reinstall at top of export cell
+try:
+    from unsloth import FastLanguageModel
+except ImportError:
+    !pip install unsloth
+    from unsloth import FastLanguageModel
+```
+
+### Recommended Workflow
+
+1. Generate dataset with `finetune_llm.py` (uses Gemini/Claude for diversity)
+2. Upload to Colab (use T4 or better)
+3. Train with Unsloth SFTTrainer
+4. Save checkpoint frequently (Colab is unstable)
+5. Export to GGUF in separate cell with memory clearing
+6. Download GGUF before runtime expires
+
+### Dataset Formats
+
+- `sharegpt_thought` (recommended): Includes THOUGHT reasoning
+- `sharegpt_semantics`: Full THOUGHT + QUANTIZE + SLIP
+- `sharegpt`: Direct instruction → SLIP (no reasoning)
+
 ## Contributing
 
 1. Core UCR anchors are immutable within a version

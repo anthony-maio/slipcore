@@ -7,6 +7,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
+private/
 dist/
 downloads/
 eggs/
@@ -50,11 +51,14 @@ Thumbs.db
 
 # ============ Slipstream-specific ============
 
-# Generated datasets (keep samples, ignore large generated files)
-*.generated.jsonl
-slipstream_train*.jsonl
-train*.jsonl
-!data/slipstream_train.sample.jsonl
+# Drafts and working docs (not public)
+private/
+
+# Old/experimental code
+src/v2_proposed/
+
+# Build outputs
+output/
 
 # Model weights and checkpoints (too large for git)
 *.bin
@@ -62,10 +66,8 @@ train*.jsonl
 *.gguf
 *.ggml
 checkpoints/
-slipstream_*/
-*_lora/
-*_gguf/
 models/
+scripts/models/
 
 # Hugging Face cache
 .cache/
@@ -80,7 +82,6 @@ credentials.json
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
 # Logs
 *.log
@@ -98,5 +99,5 @@ tensorboard/
 # Temp files
 tmp/
 temp/
-v2_proposed/
 *.tmp
+nul

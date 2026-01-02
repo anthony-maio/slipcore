@@ -235,7 +235,7 @@ def build_send_message_jsonrpc(
     """
     Build a JSON-RPC request object for method "SendMessage".
 
-    NOTE: A2A’s JSON-RPC binding defines how service parameters are transmitted.
+    NOTE: A2A's JSON-RPC binding defines how service parameters are transmitted.
     This helper includes a "serviceParameters" dict inside params for convenience.
     """
     msg = build_slip_a2a_message(
