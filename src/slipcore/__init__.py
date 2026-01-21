@@ -90,8 +90,25 @@ try:
         PROVIDERS as LLM_PROVIDERS,
     )
     _HAS_LLM_FINETUNE = True
-except ImportError:
+    _LLM_IMPORT_ERROR = None
+except ImportError as exc:
     _HAS_LLM_FINETUNE = False
+    _LLM_IMPORT_ERROR = exc
+
+    def generate_dataset_llm(*_args, **_kwargs):
+        raise ImportError(
+            "LLM dataset generation requires optional dependencies. "
+            "Install with `pip install slipcore[llm]`."
+        ) from _LLM_IMPORT_ERROR
+
+    class LLMExample:
+        def __init__(self, *_args, **_kwargs):
+            raise ImportError(
+                "LLM dataset generation requires optional dependencies. "
+                "Install with `pip install slipcore[llm]`."
+            ) from _LLM_IMPORT_ERROR
+
+    LLM_PROVIDERS = {}
 
 # UCR Builder - corpus-based construction (requires numpy, sentence-transformers)
 try:
@@ -101,8 +118,30 @@ try:
         build_ucr_from_corpus,
     )
     _HAS_BUILDER = True
-except ImportError:
+    _BUILDER_IMPORT_ERROR = None
+except ImportError as exc:
     _HAS_BUILDER = False
+    _BUILDER_IMPORT_ERROR = exc
+
+    def build_ucr_from_corpus(*_args, **_kwargs):
+        raise ImportError(
+            "UCR builder requires optional dependencies. "
+            "Install with `pip install slipcore[builder]`."
+        ) from _BUILDER_IMPORT_ERROR
+
+    class UCRBuilder:
+        def __init__(self, *_args, **_kwargs):
+            raise ImportError(
+                "UCR builder requires optional dependencies. "
+                "Install with `pip install slipcore[builder]`."
+            ) from _BUILDER_IMPORT_ERROR
+
+    class BuildStats:
+        def __init__(self, *_args, **_kwargs):
+            raise ImportError(
+                "UCR builder requires optional dependencies. "
+                "Install with `pip install slipcore[builder]`."
+            ) from _BUILDER_IMPORT_ERROR
 
 __all__ = [
     # Version

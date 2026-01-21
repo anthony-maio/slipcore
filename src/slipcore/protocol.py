@@ -64,13 +64,20 @@ def encode(msg: SlipMessage) -> str:
         "SLIP v1 alice bob RequestReview"
         "SLIP v1 planner coord ProposePlan auth_refactor high_priority"
     """
+    _ensure_single_token(msg.version, "version")
+    _ensure_single_token(msg.src, "src")
+    _ensure_single_token(msg.dst, "dst")
+    _ensure_single_token(msg.anchor.mnemonic, "anchor mnemonic")
+
     parts = [PROTOCOL_MARKER, msg.version, msg.src, msg.dst, msg.anchor.mnemonic]
 
     # Add thread_id if present (prefixed with 'thread' for clarity)
     if msg.thread_id:
+        _ensure_single_token(msg.thread_id, "thread_id")
         parts.append(f"thread{msg.thread_id}")
 
     # Add payload tokens
+    _ensure_token_list(msg.payload, "payload")
     parts.extend(msg.payload)
 
     return " ".join(parts)
@@ -118,7 +125,7 @@ def decode(wire: str, ucr: Optional[UCR] = None) -> SlipMessage:
     payload = []
 
     for token in rest:
-        if token.startswith("thread") and thread_id is None:
+        if token.startswith("thread") and thread_id is None and len(token) > 6:
             thread_id = token[6:]  # Strip "thread" prefix
         else:
             payload.append(token)
@@ -139,6 +146,23 @@ def is_valid_agent_name(name: str) -> bool:
     Should be a single BPE token (alphanumeric, no special chars).
     """
     return name.isalnum() and len(name) > 0
+
+
+def _ensure_single_token(value: str, label: str) -> None:
+    if not isinstance(value, str) or not value or any(ch.isspace() for ch in value):
+        raise ValueError(f"{label} must be a non-empty single token without whitespace")
+
+
+def _ensure_token_list(tokens: list[str], label: str) -> None:
+    if not isinstance(tokens, list):
+        raise ValueError(f"{label} must be a list of strings")
+    for token in tokens:
+        if not isinstance(token, str):
+            raise ValueError(f"{label} must contain only strings")
+        if not token or any(ch.isspace() for ch in token):
+            raise ValueError(
+                f"{label} tokens must be non-empty and contain no whitespace"
+            )
 
 
 # ============ Convenience Functions ============

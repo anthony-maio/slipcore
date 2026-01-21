@@ -159,6 +159,14 @@ Slipstream is designed as the **transport layer** for the Linux Foundation Agent
 
 ---
 
+## Contributing
+
+We welcome contributions of all kinds! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for
+development setup, optional dependencies, and the recommended workflow. Our community standards
+are documented in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+---
+
 ## Citation
 
 ```bibtex
