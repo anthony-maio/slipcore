@@ -126,7 +126,14 @@ def decode(wire: str, ucr: Optional[UCR] = None) -> SlipMessage:
 
     for token in rest:
         if token.startswith("thread") and thread_id is None and len(token) > 6:
-            thread_id = token[6:]  # Strip "thread" prefix
+            candidate_id = token[6:]  # Strip "thread" prefix
+            # Validate that the extracted thread_id is valid to avoid
+            # misidentifying payload tokens like "threading" or "threads"
+            if candidate_id and _is_valid_thread_id(candidate_id):
+                thread_id = candidate_id
+            else:
+                # Not a valid thread ID, treat as regular payload
+                payload.append(token)
         else:
             payload.append(token)
 
@@ -146,6 +153,38 @@ def is_valid_agent_name(name: str) -> bool:
     Should be a single BPE token (alphanumeric, no special chars).
     """
     return name.isalnum() and len(name) > 0
+
+
+def _is_valid_thread_id(thread_id: str) -> bool:
+    """
+    Check if a thread_id is valid.
+    
+    Valid thread IDs contain only alphanumeric characters, hyphens, and underscores.
+    They must be non-empty and not contain whitespace.
+    
+    To avoid misidentifying words like "threading", "threads", "threadsafe" as thread IDs,
+    valid thread IDs must start with either:
+    - A digit (e.g., "42" from "thread42")
+    - An underscore or hyphen (e.g., "_abc" from "thread_abc", "-task" from "thread-task")
+    
+    Args:
+        thread_id: The thread ID to validate
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    if not thread_id or not isinstance(thread_id, str):
+        return False
+    if any(ch.isspace() for ch in thread_id):
+        return False
+    
+    # Thread ID must start with a digit, underscore, or hyphen
+    # This excludes words like "threading", "threads", "threadsafe"
+    if not (thread_id[0].isdigit() or thread_id[0] in ('_', '-')):
+        return False
+    
+    # Allow alphanumeric, hyphens, and underscores in the rest
+    return all(ch.isalnum() or ch in ('-', '_') for ch in thread_id)
 
 
 def _ensure_single_token(value: str, label: str) -> None:
