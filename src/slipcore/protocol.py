@@ -5,12 +5,16 @@ Token-aligned wire format for efficient multi-agent communication.
 Avoids special characters that fragment in BPE tokenizers.
 
 Wire format:
-    SLIP <version> <src> <dst> <anchor> [payload...]
+    SLIP <version> <src> <dst> <anchor> [thread<id>] [payload...]
 
 Examples:
     SLIP v1 alice bob RequestReview
     SLIP v1 planner coordinator ProposePlan auth refactor
     SLIP v1 critic executor EvalNeedsWork security validation
+    SLIP v1 worker manager InformProgress thread42 milestone3
+
+Thread IDs must start with a digit, underscore, or hyphen (e.g., "42", "_abc", "-task")
+to distinguish them from regular English words in payload.
 """
 
 from __future__ import annotations
@@ -35,7 +39,9 @@ class SlipMessage:
         anchor: The UCR anchor (semantic intent)
         payload: Optional payload tokens (unquantizable content)
         version: Protocol version
-        thread_id: Optional conversation thread identifier
+        thread_id: Optional conversation thread identifier. Must start with a digit,
+                  underscore, or hyphen (e.g., "42", "_abc", "-task") to distinguish
+                  from regular English words in payload.
     """
     src: str
     dst: str
@@ -74,6 +80,12 @@ def encode(msg: SlipMessage) -> str:
     # Add thread_id if present (prefixed with 'thread' for clarity)
     if msg.thread_id:
         _ensure_single_token(msg.thread_id, "thread_id")
+        if not _is_valid_thread_id(msg.thread_id):
+            raise ValueError(
+                f"thread_id must start with a digit, underscore, or hyphen "
+                f"(got '{msg.thread_id}'). This ensures it can be distinguished from "
+                f"payload tokens during decoding."
+            )
         parts.append(f"thread{msg.thread_id}")
 
     # Add payload tokens
@@ -126,7 +138,14 @@ def decode(wire: str, ucr: Optional[UCR] = None) -> SlipMessage:
 
     for token in rest:
         if token.startswith("thread") and thread_id is None and len(token) > 6:
-            thread_id = token[6:]  # Strip "thread" prefix
+            candidate_id = token[6:]  # Strip "thread" prefix
+            # Validate that the extracted thread_id is valid to avoid
+            # misidentifying payload tokens like "threading" or "threads"
+            if candidate_id and _is_valid_thread_id(candidate_id):
+                thread_id = candidate_id
+            else:
+                # Not a valid thread ID, treat as regular payload
+                payload.append(token)
         else:
             payload.append(token)
 
@@ -146,6 +165,38 @@ def is_valid_agent_name(name: str) -> bool:
     Should be a single BPE token (alphanumeric, no special chars).
     """
     return name.isalnum() and len(name) > 0
+
+
+def _is_valid_thread_id(thread_id: str) -> bool:
+    """
+    Check if a thread_id is valid.
+    
+    Valid thread IDs contain only alphanumeric characters, hyphens, and underscores.
+    They must be non-empty and not contain whitespace.
+    
+    To avoid misidentifying words like "threading", "threads", "threadsafe" as thread IDs,
+    valid thread IDs must start with either:
+    - A digit (e.g., "42" from "thread42")
+    - An underscore or hyphen (e.g., "_abc" from "thread_abc", "-task" from "thread-task")
+    
+    Args:
+        thread_id: The thread ID to validate
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    if not thread_id or not isinstance(thread_id, str):
+        return False
+    if any(ch.isspace() for ch in thread_id):
+        return False
+    
+    # Thread ID must start with a digit, underscore, or hyphen
+    # This excludes words like "threading", "threads", "threadsafe"
+    if not (thread_id[0].isdigit() or thread_id[0] in ('_', '-')):
+        return False
+    
+    # Allow alphanumeric, hyphens, and underscores in the rest
+    return all(ch.isalnum() or ch in ('-', '_') for ch in thread_id)
 
 
 def _ensure_single_token(value: str, label: str) -> None:
@@ -247,7 +298,7 @@ class MessageBuilder:
             .to_agent("executor")
             .intent("RequestTask")
             .with_payload("implement", "auth", "module")
-            .in_thread("task42")
+            .in_thread("42")
             .build())
     """
 
