@@ -5,12 +5,16 @@ Token-aligned wire format for efficient multi-agent communication.
 Avoids special characters that fragment in BPE tokenizers.
 
 Wire format:
-    SLIP <version> <src> <dst> <anchor> [payload...]
+    SLIP <version> <src> <dst> <anchor> [thread<id>] [payload...]
 
 Examples:
     SLIP v1 alice bob RequestReview
     SLIP v1 planner coordinator ProposePlan auth refactor
     SLIP v1 critic executor EvalNeedsWork security validation
+    SLIP v1 worker manager InformProgress thread42 milestone3
+
+Thread IDs must start with a digit, underscore, or hyphen (e.g., "42", "_abc", "-task")
+to distinguish them from regular English words in payload.
 """
 
 from __future__ import annotations
@@ -35,7 +39,9 @@ class SlipMessage:
         anchor: The UCR anchor (semantic intent)
         payload: Optional payload tokens (unquantizable content)
         version: Protocol version
-        thread_id: Optional conversation thread identifier
+        thread_id: Optional conversation thread identifier. Must start with a digit,
+                  underscore, or hyphen (e.g., "42", "_abc", "-task") to distinguish
+                  from regular English words in payload.
     """
     src: str
     dst: str
@@ -74,6 +80,12 @@ def encode(msg: SlipMessage) -> str:
     # Add thread_id if present (prefixed with 'thread' for clarity)
     if msg.thread_id:
         _ensure_single_token(msg.thread_id, "thread_id")
+        if not _is_valid_thread_id(msg.thread_id):
+            raise ValueError(
+                f"thread_id must start with a digit, underscore, or hyphen "
+                f"(got '{msg.thread_id}'). This ensures it can be distinguished from "
+                f"payload tokens during decoding."
+            )
         parts.append(f"thread{msg.thread_id}")
 
     # Add payload tokens
@@ -286,7 +298,7 @@ class MessageBuilder:
             .to_agent("executor")
             .intent("RequestTask")
             .with_payload("implement", "auth", "module")
-            .in_thread("task42")
+            .in_thread("42")
             .build())
     """
 
