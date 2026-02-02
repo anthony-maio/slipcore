@@ -266,6 +266,12 @@ class UCRBuilder:
             raise ImportError("numpy is required: pip install numpy")
         if not _HAS_SBERT:
             raise ImportError("sentence-transformers is required: pip install sentence-transformers")
+        if n_clusters < 1:
+            raise ValueError("n_clusters must be >= 1")
+        if min_cluster_size < 1:
+            raise ValueError("min_cluster_size must be >= 1")
+        if batch_size < 1:
+            raise ValueError("batch_size must be >= 1")
 
         self.n_clusters = n_clusters
         self.embedding_model_name = embedding_model
@@ -285,6 +291,8 @@ class UCRBuilder:
 
     def _embed_batch(self, texts: List[str]) -> "np.ndarray":
         """Embed texts and return normalized vectors."""
+        if not texts:
+            raise ValueError("texts must be a non-empty list of strings")
         self._ensure_model()
         vecs = self._model.encode(
             texts,
@@ -325,12 +333,16 @@ class UCRBuilder:
 
         # Filter empty messages
         messages = [m.strip() for m in messages if m and m.strip()]
-        if len(messages) < self.n_clusters:
+        if not messages:
+            raise ValueError("messages must contain at least one non-empty entry")
+
+        n_clusters = self.n_clusters
+        if len(messages) < n_clusters:
             print(f"Warning: Only {len(messages)} messages for {self.n_clusters} clusters")
-            self.n_clusters = max(1, len(messages) // 3)
+            n_clusters = max(1, len(messages) // 3)
 
         print(f"\n{'='*60}")
-        print(f"Building UCR: {self.n_clusters} clusters from {len(messages)} messages")
+        print(f"Building UCR: {n_clusters} clusters from {len(messages)} messages")
         print(f"{'='*60}\n")
 
         # Step 1: Embed
@@ -346,9 +358,9 @@ class UCRBuilder:
         cluster_start = time.time()
 
         if _HAS_SKLEARN:
-            print(f"      Using MiniBatchKMeans (k={self.n_clusters})")
+            print(f"      Using MiniBatchKMeans (k={n_clusters})")
             kmeans = MiniBatchKMeans(
-                n_clusters=self.n_clusters,
+                n_clusters=n_clusters,
                 batch_size=1024,
                 max_iter=100,
                 random_state=self.random_state,
@@ -358,7 +370,12 @@ class UCRBuilder:
             centroids = kmeans.cluster_centers_
         else:
             print("      Using greedy cosine clustering (sklearn not available)")
-            labels, centroids = self._greedy_cluster(embeddings, self.n_clusters)
+            labels, centroids = self._greedy_cluster(embeddings, n_clusters)
+
+        if centroids.size == 0:
+            raise ValueError("Clustering produced no centroids; check input data and parameters")
+
+        n_clusters = int(centroids.shape[0])
 
         stats.clustering_time_sec = time.time() - cluster_start
         print(f"      Time: {stats.clustering_time_sec:.1f}s\n")
@@ -380,7 +397,7 @@ class UCRBuilder:
         anchors_skipped = 0
         cluster_sizes = []
 
-        for cluster_id in range(self.n_clusters):
+        for cluster_id in range(n_clusters):
             # Get messages in this cluster
             cluster_mask = labels == cluster_id
             cluster_indices = np.where(cluster_mask)[0]
@@ -472,6 +489,8 @@ class UCRBuilder:
 
         Returns (labels, centroids).
         """
+        if n_clusters < 1:
+            return np.array([], dtype=np.int32), np.array([])
         n_samples = embeddings.shape[0]
         labels = np.full(n_samples, -1, dtype=np.int32)
         centroids_list: List[np.ndarray] = []
@@ -519,6 +538,8 @@ class UCRBuilder:
         threshold: float = 0.5,
     ) -> float:
         """Estimate coverage by checking how many messages quantize well."""
+        if len(embeddings) == 0:
+            return 0.0
         if not ucr.anchors:
             return 0.0
 

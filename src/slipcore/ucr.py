@@ -143,6 +143,11 @@ class UCR:
         """
         if not self.anchors:
             raise ValueError("UCR has no anchors")
+        if len(coords) != len(Dimension):
+            raise ValueError(f"coords must have {len(Dimension)} values, got {len(coords)}")
+        for i, c in enumerate(coords):
+            if not (0 <= c < LEVELS_PER_DIM):
+                raise ValueError(f"coord[{i}] must be 0-{LEVELS_PER_DIM-1}, got {c}")
 
         best_anchor = None
         best_distance = float('inf')
@@ -153,6 +158,8 @@ class UCR:
                 best_distance = distance
                 best_anchor = anchor
 
+        if best_anchor is None:
+            raise ValueError("UCR has no anchors")
         return best_anchor
 
     def core_anchors(self) -> list[UCRAnchor]:

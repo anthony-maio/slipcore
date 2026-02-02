@@ -32,6 +32,23 @@ except ImportError:
     HAS_NUMPY = False
 
 
+# ============ Shared Validation ============
+
+def _normalize_thought(thought: str) -> str:
+    """Normalize and validate incoming thought text."""
+    if not isinstance(thought, str):
+        raise TypeError("thought must be a string")
+    return thought.strip()
+
+
+def _require_fallback(ucr: UCR) -> UCRAnchor:
+    """Return the fallback anchor or raise a helpful error."""
+    fallback = ucr.get_by_mnemonic("Fallback")
+    if fallback is None:
+        raise ValueError("UCR missing required 'Fallback' anchor")
+    return fallback
+
+
 # ============ Semantic Coordinates ============
 
 @dataclass(frozen=True)
@@ -428,12 +445,22 @@ class KeywordQuantizer:
         Returns:
             QuantizeResult with the best anchor and confidence score
         """
+        normalized = _normalize_thought(thought)
+        if not normalized:
+            fallback = _require_fallback(self.ucr)
+            self._usage_stats["_fallback"] += 1
+            return QuantizeResult(
+                anchor=fallback,
+                confidence=0.0,
+                method="fallback",
+                alternatives=[],
+            )
         scores: list[tuple[UCRAnchor, float]] = []
 
         for mnemonic, patterns in _KEYWORD_PATTERNS.items():
             anchor = self.ucr.get_by_mnemonic(mnemonic)
             if anchor:
-                score = _keyword_score(thought, patterns)
+                score = _keyword_score(normalized, patterns)
                 if score > 0:
                     scores.append((anchor, score))
 
@@ -442,7 +469,7 @@ class KeywordQuantizer:
 
         if not scores or scores[0][1] < self.fallback_threshold:
             # Use fallback
-            fallback = self.ucr.get_by_mnemonic("Fallback")
+            fallback = _require_fallback(self.ucr)
             self._usage_stats["_fallback"] += 1
             return QuantizeResult(
                 anchor=fallback,
@@ -537,6 +564,8 @@ class EmbeddingQuantizer:
 
     def _embed_batch(self, texts: List[str]) -> "np.ndarray":
         """Embed a batch of texts and return normalized vectors."""
+        if not texts:
+            raise ValueError("texts must be a non-empty list of strings")
         if not self._model:
             self._ensure_model()
         vecs = self._model.encode(texts, convert_to_numpy=True)
@@ -591,9 +620,20 @@ class EmbeddingQuantizer:
             QuantizeResult with the best anchor and confidence score
         """
         self._ensure_model()
+        normalized = _normalize_thought(thought)
+        if not normalized:
+            fallback = _require_fallback(self.ucr)
+            self._usage_stats["_fallback"] += 1
+            self._fallback_buffer.append(thought)
+            return QuantizeResult(
+                anchor=fallback,
+                confidence=0.0,
+                method="fallback",
+                alternatives=[],
+            )
 
         if self._centroids_matrix is None or len(self._anchor_indices) == 0:
-            fallback = self.ucr.get_by_mnemonic("Fallback")
+            fallback = _require_fallback(self.ucr)
             self._fallback_buffer.append(thought)
             return QuantizeResult(
                 anchor=fallback,
@@ -603,7 +643,7 @@ class EmbeddingQuantizer:
             )
 
         # Embed the thought (normalized)
-        thought_vec = self._embed_one(thought)
+        thought_vec = self._embed_one(normalized)
 
         # Compute cosine similarities (dot product of normalized vectors)
         similarities = np.dot(self._centroids_matrix, thought_vec)
@@ -619,7 +659,7 @@ class EmbeddingQuantizer:
         best_anchor, best_score = scores[0]
 
         if best_score < self.fallback_threshold:
-            fallback = self.ucr.get_by_mnemonic("Fallback")
+            fallback = _require_fallback(self.ucr)
             self._usage_stats["_fallback"] += 1
             self._fallback_buffer.append(thought)
             return QuantizeResult(
@@ -653,11 +693,14 @@ class EmbeddingQuantizer:
         Returns UCR-compatible coordinate tuple.
         """
         self._ensure_model()
-        vec = self._embed_one(text)
+        normalized = _normalize_thought(text)
+        if not normalized:
+            return infer_coords(text, None)
+        vec = self._embed_one(normalized)
         if self._coords_inferer:
-            sc = self._coords_inferer.infer(text, vec)
+            sc = self._coords_inferer.infer(normalized, vec)
             return semantic_coords_to_tuple(sc)
-        return infer_coords(text, vec)
+        return infer_coords(normalized, vec)
 
     def compute_centroid(self, texts: List[str]) -> List[float]:
         """
@@ -666,6 +709,8 @@ class EmbeddingQuantizer:
         Useful for creating new extension anchors.
         """
         self._ensure_model()
+        if not texts:
+            raise ValueError("texts must be a non-empty list of strings")
         embeds = self._embed_batch(texts)
         centroid = np.mean(embeds, axis=0)
         # Normalize
