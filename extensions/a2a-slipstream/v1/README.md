@@ -1,6 +1,6 @@
-# Slipstream over A2A (SLIP-A2A) Extension — Draft v0.1
+# Slipstream over A2A (SLIP-A2A) Extension — Draft v0.2
 
-This document defines a token-friendly way to carry **Slipstream (SLIP)** wire-format messages inside the **Agent2Agent (A2A)** protocol using A2A's built-in extension mechanism.
+This document defines a token-friendly way to carry **Slipstream (SLIP) v3** wire-format messages inside the **Agent2Agent (A2A)** protocol using A2A's built-in extension mechanism. Slipstream v3 uses a **Force-Object** factorized intent model where each intent is expressed as a Force token (from a closed 12-value set) followed by an extensible Object token.
 
 > Design intent: **A2A stays the interoperability contract** (discovery, tasks, streaming, artifacts).
 > **Slipstream is the content encoding** that makes the *message body* cheap for LLMs to read/write.
@@ -32,10 +32,10 @@ An A2A agent that supports SLIP-A2A MUST declare it in:
     "extensions": [
       {
         "uri": "https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1",
-        "description": "Accepts Slipstream wire text in Message.parts[].text. Uses mnemonics (not hex) for token efficiency.",
+        "description": "Accepts Slipstream v3 wire text in Message.parts[].text. Uses Force-Object factorized intents for token efficiency.",
         "required": false,
         "params": {
-          "slipVersion": "v1",
+          "slipVersion": "v3",
           "ucrVersion": "1.0.0",
           "ucrHash": "sha256:<hex>",
           "preferredInputMode": "text/slip"
@@ -48,7 +48,7 @@ An A2A agent that supports SLIP-A2A MUST declare it in:
 
 **Notes**
 - `required` SHOULD remain `false` for broad interoperability.
-- `ucrHash` SHOULD be a stable hash of the shared UCR anchor set (see §5).
+- `ucrHash` SHOULD be a stable hash of the shared UCR anchor set (see S5).
 
 ### 2.2 Client opt-in (request-level)
 
@@ -69,10 +69,10 @@ When sending a Message using SLIP-A2A, the client MUST include:
   ],
   "metadata": {
     "https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1": {
-      "slipVersion": "v1",
+      "slipVersion": "v3",
       "ucrVersion": "1.0.0",
       "ucrHash": "sha256:<hex>",
-      "encoding": "mnemonic",
+      "encoding": "force-object",
       "confidence": 0.0
     }
   }
@@ -88,14 +88,16 @@ When sending a Message using SLIP-A2A, the client MUST include:
 SLIP-A2A encodes Slipstream as **plain text** in the first `TextPart` of the A2A message:
 
 ```text
-SLIP v1 <src> <dst> <anchor> [payload...]
+SLIP v3 <src> <dst> <Force> <Object> [payload...]
 ```
 
 Example:
 
 ```text
-SLIP v1 planner reviewer RequestReview auth_module
+SLIP v3 planner reviewer Request Review auth
 ```
+
+The wire format uses two intent tokens: a **Force** token drawn from a closed set of 12 values, followed by an **Object** token that names the target concept.
 
 ### 3.2 Why "text part" (not JSON)
 
@@ -105,7 +107,7 @@ SLIP v1 planner reviewer RequestReview auth_module
 ### 3.3 Attachments
 
 If you need to send large structured payloads (patches, files, JSON blobs), SLIP-A2A RECOMMENDS:
-- put the **intent** in the Slipstream text part (anchor + minimal payload tokens), and
+- put the **intent** in the Slipstream text part (Force + Object + minimal payload tokens), and
 - put heavy data in additional A2A Parts (`FilePart` or `DataPart`).
 
 Example structure:
@@ -115,15 +117,15 @@ Example structure:
   "message": {
     "role": "user",
     "parts": [
-      {"text": "SLIP v1 dev reviewer RequestReview"},
+      {"text": "SLIP v3 dev reviewer Request Review"},
       {"file": {"name": "diff.patch", "mimeType": "text/x-diff", "bytes": "<base64>"}}
     ],
     "extensions": ["https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1"],
     "metadata": {
       "https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1": {
-        "slipVersion": "v1",
+        "slipVersion": "v3",
         "ucrVersion": "1.0.0",
-        "encoding": "mnemonic"
+        "encoding": "force-object"
       }
     }
   }
@@ -136,11 +138,12 @@ Example structure:
 
 To preserve token-friendliness, SLIP-A2A imposes additional constraints on the Slipstream wire text used inside A2A messages:
 
-1. **Anchors MUST be mnemonics**, not hex IDs (no `0x...` in-wire).
-2. The wire text MUST use **spaces as the only structural delimiter**.
-3. The wire text MUST NOT require punctuation markers like `|`, `{}`, `=`, `@`, `#` to be parsed.
-4. Payload tokens SHOULD be "safe identifiers": `[A-Za-z0-9._-]+`.
-5. If arbitrary free-form text must be sent, use the `Fallback` anchor and carry the text in a single quoted payload token, or send a second plain `text/plain` part.
+1. **Force tokens MUST be one of the 12 canonical values**: Observe, Inform, Ask, Request, Propose, Commit, Eval, Meta, Accept, Reject, Error, Fallback. This is a closed set.
+2. **Object tokens** are extensible alphanumeric strings (1-30 characters, `[A-Za-z0-9]+`).
+3. The wire text MUST use **spaces as the only structural delimiter**.
+4. The wire text MUST NOT require punctuation markers like `|`, `{}`, `=`, `@`, `#` to be parsed.
+5. **Payload tokens MUST be alphanumeric identifiers** matching `[A-Za-z0-9]+` (no punctuation).
+6. If arbitrary free-form text must be sent, carry it outside the Slipstream wire payload (e.g., in a separate `text/plain` part or artifact) rather than encoding it in a single token.
 
 ---
 
@@ -151,7 +154,7 @@ A2A agents using Slipstream MUST share a compatible UCR. SLIP-A2A standardizes a
 - `ucrVersion`: semantic version string (e.g., `1.0.0`).
 - `ucrHash`: `sha256:` of the canonicalized anchor table:
   - sort anchors by `index`
-  - for each anchor include: `index|mnemonic|canonical|coords`
+  - for each anchor include: `index|force|obj|canonical|coords`
   - UTF-8 encode
   - SHA-256 hash
 
@@ -176,14 +179,14 @@ A2A-Extensions: https://github.com/anthony-maio/slipcore/extensions/a2a-slipstre
   "message": {
     "messageId": "0d9c9a1d-7c08-4d2b-9f90-5e4b6b3fd4a1",
     "role": "user",
-    "parts": [{"text": "SLIP v1 planner reviewer RequestReview auth_module"}],
+    "parts": [{"text": "SLIP v3 planner reviewer Request Review auth"}],
     "extensions": ["https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1"],
     "metadata": {
       "https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1": {
-        "slipVersion": "v1",
+        "slipVersion": "v3",
         "ucrVersion": "1.0.0",
         "ucrHash": "sha256:<hex>",
-        "encoding": "mnemonic"
+        "encoding": "force-object"
       }
     }
   },
@@ -203,4 +206,4 @@ See `a2a_slipstream.py` (provided alongside this doc).
 
 ## 8. Status
 
-Draft v0.1. Intended as a practical AAIF / A2A RFC seed for discussion.
+Draft v0.2. Updated from v0.1 to reflect Slipstream v3 Force-Object wire format. Intended as a practical AAIF / A2A RFC seed for discussion.

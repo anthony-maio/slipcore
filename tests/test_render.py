@@ -124,7 +124,7 @@ class TestRenderLogLine:
 
     def test_fallback_ref_in_output(self, fallback_msg: SlipMessage) -> None:
         result = render_log_line(fallback_msg)
-        assert "ref:ref7f3a" in result
+        assert "ref=ref7f3a" in result
 
     def test_pipe_separated_structure(self, basic_msg: SlipMessage) -> None:
         result = render_log_line(basic_msg)
