@@ -10,7 +10,10 @@ Supports:
 - Anthropic Claude API (claude-sonnet-4, claude-haiku)
 - Google Gemini API (gemini-2.5-flash, gemini-2.0-flash)
 - OpenAI API (gpt-4o-mini, gpt-4o)
+- OpenRouter API (qwen/qwen-2.5-72b-instruct, and hundreds more)
 - Together.ai API
+- Fireworks.ai API
+- DeepSeek API
 - Any OpenAI-compatible endpoint
 
 Usage:
@@ -20,6 +23,9 @@ Usage:
     # With Gemini 2.5 Flash (1000 examples)
     python -m slipcore.finetune_llm -n 1000 --provider gemini --model gemini-2.5-flash
 
+    # With OpenRouter (cheapest bulk option)
+    python -m slipcore.finetune_llm -n 50000 --provider openrouter --model qwen/qwen-2.5-72b-instruct
+
     # Combined dataset: 1000 Claude + 1000 Gemini
     python -m slipcore.finetune_llm -n 1000 --provider anthropic -o train_claude.jsonl
     python -m slipcore.finetune_llm -n 1000 --provider gemini -o train_gemini.jsonl
@@ -27,6 +33,9 @@ Usage:
 
     # With TQT (Think-Quantize-Transmit) format
     python -m slipcore.finetune_llm -n 1000 -f sharegpt_thought --provider gemini
+
+    # Resume after crash (picks up where it left off)
+    python -m slipcore.finetune_llm -n 50000 --provider openrouter --resume
 """
 
 from __future__ import annotations
@@ -74,6 +83,11 @@ PROVIDERS = {
         "base_url": "https://api.deepseek.com/v1",
         "env_key": "DEEPSEEK_API_KEY",
         "default_model": "deepseek-chat",
+    },
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "env_key": "OPENROUTER_API_KEY",
+        "default_model": "qwen/qwen-2.5-72b-instruct",
     },
 }
 
@@ -509,6 +523,46 @@ def to_sharegpt_semantics(example: LLMExample, system_prompt: str) -> dict:
     }
 
 
+def _count_existing_lines(path: Path) -> int:
+    """Count the number of lines in an existing file.
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        Number of lines, or 0 if the file does not exist.
+    """
+    if not path.exists():
+        return 0
+    count = 0
+    with open(path, "r", encoding="utf-8") as f:
+        for _ in f:
+            count += 1
+    return count
+
+
+def _format_duration(seconds: float) -> str:
+    """Format seconds into a human-readable duration string.
+
+    Args:
+        seconds: Duration in seconds.
+
+    Returns:
+        Formatted string like '1h 23m 45s' or '5m 12s'.
+    """
+    if seconds < 0:
+        return "0s"
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    if h > 0:
+        return f"{h}h {m:02d}m {s:02d}s"
+    elif m > 0:
+        return f"{m}m {s:02d}s"
+    else:
+        return f"{s}s"
+
+
 def generate_dataset_llm(
     output_path: Path,
     num_examples: int = 1000,
@@ -520,25 +574,30 @@ def generate_dataset_llm(
     batch_size: int = 25,
     max_workers: int = 4,
     delay_between_batches: float = 0.5,
+    resume: bool = False,
 ) -> int:
     """Generate a high-quality v3 Think-Quantize-Transmit dataset using LLM APIs.
 
     Args:
-        output_path: Where to save the JSONL file
-        num_examples: Target number of examples
-        provider: API provider (anthropic, gemini, openai, together, fireworks, deepseek)
-        model: Model name (uses provider default if not specified)
-        api_key: API key (reads from env if not specified)
+        output_path: Where to save the JSONL file.
+        num_examples: Target number of examples.
+        provider: API provider (anthropic, gemini, openai, together, fireworks,
+            deepseek, openrouter).
+        model: Model name (uses provider default if not specified).
+        api_key: API key (reads from env if not specified).
         format: Output format:
             - Basic: sharegpt, chat, alpaca (instruction -> SLIP v3)
             - TQT: sharegpt_thought, chat_thought, sharegpt_semantics (includes THOUGHT)
-        system_prompt: System prompt for training examples
-        batch_size: Examples per API call
-        max_workers: Parallel API calls
-        delay_between_batches: Seconds between batches (rate limiting)
+        system_prompt: System prompt for training examples.
+        batch_size: Examples per API call.
+        max_workers: Parallel API calls.
+        delay_between_batches: Seconds between batches (rate limiting).
+        resume: If True and the output file already exists, count existing lines
+            and continue generating from where it left off. The file is opened
+            in append mode so no existing data is lost.
 
     Returns:
-        Number of examples generated
+        Total number of examples in the output file (existing + newly generated).
     """
     if provider not in PROVIDERS:
         raise ValueError(f"Unknown provider: {provider}. Choose from: {list(PROVIDERS.keys())}")
@@ -552,10 +611,25 @@ def generate_dataset_llm(
     if model is None:
         model = PROVIDERS[provider]["default_model"]
 
-    print(f"Generating {num_examples} v3 examples using {provider}/{model}")
+    # Handle resume: count existing lines and adjust target
+    existing_count = 0
+    file_mode = "w"
+    if resume and output_path.exists():
+        existing_count = _count_existing_lines(output_path)
+        if existing_count >= num_examples:
+            print(f"Resume: {output_path} already has {existing_count} examples "
+                  f"(target: {num_examples}). Nothing to do.")
+            return existing_count
+        file_mode = "a"
+        print(f"Resume: found {existing_count} existing examples in {output_path}")
+
+    remaining = num_examples - existing_count
+
+    print(f"Generating {remaining} v3 examples using {provider}/{model}"
+          + (f" (resuming from {existing_count})" if existing_count > 0 else ""))
     print(f"Batch size: {batch_size}, Workers: {max_workers}")
 
-    num_batches = (num_examples + batch_size - 1) // batch_size
+    num_batches = (remaining + batch_size - 1) // batch_size
 
     all_examples: list[LLMExample] = []
 
@@ -569,10 +643,13 @@ def generate_dataset_llm(
     }
     converter = converters.get(format, converters["sharegpt_thought"])
 
+    start_time = time.monotonic()
+    completed_batches = 0
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for i in range(num_batches):
-            if len(all_examples) >= num_examples:
+            if len(all_examples) >= remaining:
                 break
 
             future = executor.submit(
@@ -590,20 +667,43 @@ def generate_dataset_llm(
             try:
                 batch = future.result()
                 all_examples.extend(batch)
-                print(f"Batch {i+1}/{num_batches}: +{len(batch)} examples (total: {len(all_examples)})")
+                completed_batches += 1
+                total_so_far = existing_count + len(all_examples)
+                print(f"Batch {completed_batches}/{num_batches}: "
+                      f"+{len(batch)} examples (total: {total_so_far})")
+
+                # Progress report every 10 batches
+                if completed_batches % 10 == 0:
+                    elapsed = time.monotonic() - start_time
+                    examples_generated = len(all_examples)
+                    if examples_generated > 0:
+                        rate = examples_generated / elapsed
+                        examples_left = remaining - examples_generated
+                        eta = examples_left / rate if rate > 0 else 0
+                        print(f"  -- Progress: {total_so_far}/{num_examples} examples | "
+                              f"Elapsed: {_format_duration(elapsed)} | "
+                              f"Rate: {rate:.1f} ex/s | "
+                              f"ETA: {_format_duration(eta)}")
+
             except Exception as e:
-                print(f"Batch {i+1} failed: {e}")
+                completed_batches += 1
+                print(f"Batch {completed_batches}/{num_batches} failed: {e}")
 
     random.shuffle(all_examples)
-    all_examples = all_examples[:num_examples]
+    all_examples = all_examples[:remaining]
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(output_path, file_mode, encoding="utf-8") as f:
         for example in all_examples:
             formatted = converter(example)
             f.write(json.dumps(formatted, ensure_ascii=False) + "\n")
 
-    print(f"\nGenerated {len(all_examples)} v3 examples to {output_path}")
-    return len(all_examples)
+    total_count = existing_count + len(all_examples)
+    elapsed_total = time.monotonic() - start_time
+    print(f"\nGenerated {len(all_examples)} new v3 examples to {output_path} "
+          f"in {_format_duration(elapsed_total)}")
+    if existing_count > 0:
+        print(f"Total examples in file: {total_count}")
+    return total_count
 
 
 # ============ CLI ============
@@ -661,6 +761,12 @@ def main() -> None:
         "--detailed-prompt",
         action="store_true",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume generation if output file already exists. "
+             "Counts existing lines and continues from where it left off.",
+    )
 
     args = parser.parse_args()
 
@@ -677,6 +783,7 @@ def main() -> None:
             system_prompt=system_prompt,
             batch_size=args.batch_size,
             max_workers=args.workers,
+            resume=args.resume,
         )
         print(f"\nSuccess! Generated {count} v3 examples")
         print(f"Ready for finetuning with Unsloth or similar tools")
