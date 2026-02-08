@@ -142,8 +142,8 @@ To preserve token-friendliness, SLIP-A2A imposes additional constraints on the S
 2. **Object tokens** are extensible alphanumeric strings (1-30 characters, `[A-Za-z0-9]+`).
 3. The wire text MUST use **spaces as the only structural delimiter**.
 4. The wire text MUST NOT require punctuation markers like `|`, `{}`, `=`, `@`, `#` to be parsed.
-5. Payload tokens SHOULD be "safe identifiers": `[A-Za-z0-9._-]+`.
-6. If arbitrary free-form text must be sent, use the `Fallback` Force token and carry the text in a single quoted payload token, or send a second plain `text/plain` part.
+5. **Payload tokens MUST be alphanumeric identifiers** matching `[A-Za-z0-9]+` (no punctuation).
+6. If arbitrary free-form text must be sent, carry it outside the Slipstream wire payload (e.g., in a separate `text/plain` part or artifact) rather than encoding it in a single token.
 
 ---
 

@@ -38,15 +38,20 @@ def new_message_id() -> str:
 
 def stable_ucr_hash(ucr_dict: Dict[str, Any]) -> str:
     """
-    Compute a stable sha256 hash for UCR compatibility checks.
+    Compute a stable sha256 hash for A2A UCR compatibility checks.
 
-    ucr_dict format expectation (matches slipcore.ucr.UCR.save output):
-      { "version": "...", "anchors": [ {index, force, obj, canonical, coords, ...}, ... ] }
+    NOTE: This produces a DIFFERENT hash than slipcore.ucr.UCR.content_hash().
+    content_hash() is a truncated 16-char internal identifier.
+    This function produces the full sha256:-prefixed hash required by the
+    A2A extension spec for interoperability verification.
+
+    ucr_dict format: { "anchors": [ {index, force, obj, canonical, coords, ...}, ... ] }
+    (as produced by slipcore.ucr.UCR.save, which wraps anchors with an authority object)
 
     Hash canonicalization:
       - sort anchors by index
       - per anchor: index|force|obj|canonical|coords (coords as comma-joined ints)
-      - newline separated
+      - newline separated, UTF-8 encoded, SHA-256 hashed
     """
     anchors = list(ucr_dict.get("anchors", []))
     anchors.sort(key=lambda a: int(a.get("index", 0)))

@@ -544,7 +544,7 @@ If confidence is too low, it returns a fallback message and stores the raw text 
 
 ```python
 wire = quantize("xyzzy plugh", src="a", dst="b")
-print(wire)  # "SLIP v3 a b Fallback Generic ref<hex>"
+print(wire)  # "SLIP v3 a b Fallback Generic refDEADBEEF"
 ```
 
 ### think_quantize_transmit()
@@ -1088,24 +1088,34 @@ See `extensions/a2a-slipstream/v1/` for the draft extension spec. Key points:
 - Heavy payloads (diffs, files) go in separate A2A `FilePart` or `DataPart` entries
 
 ```python
-# Construct an A2A-compatible message body
-from slipcore import format_slip, create_base_ucr
+# Construct an A2A-compatible message body using the A2A helper
+from slipcore import format_slip
+
+# The A2A adapter lives in extensions/a2a-slipstream/v1/
+# Import it directly or copy a2a_slipstream.py into your project
+from a2a_slipstream import build_slip_a2a_message
 
 wire = format_slip("planner", "reviewer", "Request", "Review")
-ucr = create_base_ucr()
+msg = build_slip_a2a_message(slip_wire=wire)
+
+# Or construct manually (use the extension URI as the metadata key):
+SLIP_EXT = "https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1"
 
 a2a_message = {
     "role": "user",
     "parts": [{"text": wire}],
+    "extensions": [SLIP_EXT],
     "metadata": {
-        "slipstream": {
+        SLIP_EXT: {
             "slipVersion": "v3",
             "ucrVersion": "3.0.0",
-            "ucrHash": "sha256:" + ucr.content_hash(),  # A2A spec requires sha256: prefix
+            "encoding": "force-object",
         }
     }
 }
 ```
+
+Note: For UCR hash verification, use the A2A helper `stable_ucr_hash()` from `a2a_slipstream.py`, not `UCR.content_hash()`. They produce different formats -- `content_hash()` is a truncated 16-char internal identifier, while the A2A spec requires a full `sha256:`-prefixed hash.
 
 ### MCP transport layer pattern
 

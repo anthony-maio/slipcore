@@ -47,7 +47,7 @@ def render_log_line(msg: SlipMessage | str, ucr: Optional[UCR] = None) -> str:
     anchor = ucr.get_by_force_obj(msg.force, msg.obj)
     canonical = anchor.canonical if anchor else "unknown"
     payload_str = " ".join(msg.payload) if msg.payload else "-"
-    ref_str = f"ref:{msg.fallback_ref}" if msg.fallback_ref else "-"
+    ref_str = msg.fallback_ref if msg.fallback_ref else "-"
 
     return (
         f"{msg.src}->{msg.dst} | {msg.force} {msg.obj} | "

@@ -10,8 +10,13 @@
 ; Top-level message
 ; ---------------------------------------------------------------
 
-slip-message   = slip-prefix SP agent-id SP agent-id SP force SP object
-                 0*20( SP payload-token )
+slip-message   = standard-message / fallback-message
+
+standard-message = slip-prefix SP agent-id SP agent-id SP force SP object
+                   0*20( SP payload-token )
+
+fallback-message = slip-prefix SP agent-id SP agent-id SP "Fallback" SP "Generic"
+                   SP fallback-ref 0*19( SP payload-token )
 
 slip-prefix    = %x53.4C.49.50 SP version    ; literal "SLIP" SP version
 version        = %x76 1*DIGIT                ; "v" followed by digits ("v3")
@@ -60,14 +65,10 @@ object         = 1*30( ALPHA / DIGIT )
 payload-token  = 1*30( ALPHA / DIGIT )
 
 ; ---------------------------------------------------------------
-; Fallback variant
+; Fallback reference
 ; ---------------------------------------------------------------
-; When Force="Fallback" and Object="Generic", the first payload
-; token is a reference pointer to locally-stored raw text.
-;
-;   SLIP v3 src dst Fallback Generic ref7f3a1b2c
-;
-; The ref token is 1-16 alphanumeric characters.
+; A short pointer to locally-stored raw text. Used as the first
+; payload token when Force="Fallback" and Object="Generic".
 
 fallback-ref   = 1*16( ALPHA / DIGIT )
 
@@ -96,9 +97,12 @@ DIGIT          = %x30-39              ; 0-9
 ; Constraints not expressible in ABNF
 ; ---------------------------------------------------------------
 ;
-; 1. src and dst MUST differ (no self-messaging)
-; 2. When force="Fallback", object SHOULD be "Generic"
-; 3. When force="Fallback", first payload token is the fallback-ref
-; 4. Total wire length SHOULD NOT exceed 200 characters
-; 5. Force tokens are case-sensitive (exactly as listed above)
-; 6. The version for this spec is "v3"
+; 1. src and dst are RECOMMENDED to differ (no self-messaging).
+;    The reference implementation (slipcore.wire) does not enforce
+;    this; if disallowed, it MUST be handled at a higher layer.
+; 2. When force="Fallback", object is RECOMMENDED to be "Generic".
+;    The reference implementation accepts any object with Fallback;
+;    restricting to "Generic" is a higher-level convention.
+; 3. Total wire length SHOULD NOT exceed 200 characters.
+; 4. Force tokens are case-sensitive (exactly as listed above).
+; 5. The version for this spec is "v3".

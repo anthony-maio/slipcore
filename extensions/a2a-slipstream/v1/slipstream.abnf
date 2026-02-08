@@ -1,2 +1,2 @@
-; Slipstream v2 ABNF (SUPERSEDED)
+; Slipstream v1 ABNF (SUPERSEDED; corresponds to SLIP v1 wire protocol)
 ; See spec/slipstream-v3.abnf for the current v3 grammar.
