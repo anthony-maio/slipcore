@@ -12,7 +12,7 @@ Usage:
     '[planner -> exec] Request Plan: "Request plan creation"'
 """
 
-__version__ = "3.0.0a1"
+__version__ = "3.0.0"
 
 from .errors import (
     AnchorNotFoundError,
