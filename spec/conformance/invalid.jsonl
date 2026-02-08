@@ -1,0 +1,15 @@
+{"wire": "SLIP v1 a b Request Plan", "error": "WireParseError", "reason": "wrong version"}
+{"wire": "HTTP v3 a b Request Plan", "error": "WireParseError", "reason": "wrong prefix"}
+{"wire": "SLIP v3 a", "error": "WireParseError", "reason": "too few tokens"}
+{"wire": "SLIP v3", "error": "WireParseError", "reason": "too few tokens"}
+{"wire": "SLIP v3 a b", "error": "WireParseError", "reason": "too few tokens"}
+{"wire": "SLIP v3 a b c", "error": "WireParseError", "reason": "too few tokens"}
+{"wire": "SLIP v3 a b c d", "error": "WireParseError", "reason": "too few tokens"}
+{"wire": "SLIP v3 a.b c Request Plan", "error": "WireValidationError", "reason": "invalid src (contains dot)"}
+{"wire": "SLIP v3 a b_c Request Plan", "error": "WireValidationError", "reason": "invalid dst (contains underscore)"}
+{"wire": "SLIP v3 a b Yeet Plan", "error": "WireValidationError", "reason": "unknown force"}
+{"wire": "SLIP v3 a b OBSERVE Plan", "error": "WireValidationError", "reason": "force is case-sensitive"}
+{"wire": "SLIP v3 a b request Plan", "error": "WireValidationError", "reason": "force is case-sensitive"}
+{"wire": "SLIP v3 aaaaaaaaaaaaaaaaaaaaa b Request Plan", "error": "WireValidationError", "reason": "src too long (21 chars)"}
+{"wire": "SLIP v3 a b Request Plan pay.load", "error": "WireValidationError", "reason": "payload contains dot"}
+{"wire": "", "error": "WireParseError", "reason": "empty string"}

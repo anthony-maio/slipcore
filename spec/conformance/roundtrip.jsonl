@@ -1,0 +1,10 @@
+{"src": "planner", "dst": "exec", "force": "Request", "obj": "Plan", "payload": [], "wire": "SLIP v3 planner exec Request Plan"}
+{"src": "qa", "dst": "dev", "force": "Request", "obj": "Review", "payload": ["auth", "module"], "wire": "SLIP v3 qa dev Request Review auth module"}
+{"src": "a", "dst": "b", "force": "Observe", "obj": "Error", "payload": [], "wire": "SLIP v3 a b Observe Error"}
+{"src": "dev", "dst": "team", "force": "Inform", "obj": "Complete", "payload": ["sprint3"], "wire": "SLIP v3 dev team Inform Complete sprint3"}
+{"src": "pm", "dst": "dev", "force": "Meta", "obj": "Ack", "payload": [], "wire": "SLIP v3 pm dev Meta Ack"}
+{"src": "sre", "dst": "ops", "force": "Error", "obj": "Timeout", "payload": ["api"], "wire": "SLIP v3 sre ops Error Timeout api"}
+{"src": "lead", "dst": "team", "force": "Accept", "obj": "Generic", "payload": [], "wire": "SLIP v3 lead team Accept Generic"}
+{"src": "arch", "dst": "dev", "force": "Propose", "obj": "Alternative", "payload": ["Redis"], "wire": "SLIP v3 arch dev Propose Alternative Redis"}
+{"src": "bot1", "dst": "bot2", "force": "Meta", "obj": "Sync", "payload": [], "wire": "SLIP v3 bot1 bot2 Meta Sync"}
+{"src": "qa", "dst": "planner", "force": "Fallback", "obj": "Generic", "payload": ["ref7f3a"], "wire": "SLIP v3 qa planner Fallback Generic ref7f3a"}

@@ -1,27 +1,18 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
 
 [project]
 name = "slipcore"
-version = "2.4.0"
-description = "Slipstream Protocol - Semantic Quantization for Efficient Multi-Agent Coordination"
+version = "3.0.0a1"
+description = "Token-efficient agent-to-agent coordination protocol"
 readme = "README.md"
-license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
-keywords = [
-    "agents",
-    "llm",
-    "protocol",
-    "multi-agent",
-    "semantic-quantization",
-    "agentic-ai",
-    "mcp",
-    "langchain",
-    "langgraph",
-]
+license = {text = "Apache-2.0"}
+authors = [{name = "Slipstream Contributors"}]
+keywords = ["agents", "llm", "coordination", "protocol", "a2a", "mcp"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -29,8 +20,36 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
 ]
+
+# ZERO DEPENDENCIES IN CORE
+dependencies = []
+
+[project.optional-dependencies]
+ml = [
+    "numpy>=1.24",
+    "sentence-transformers>=2.2",
+    "scikit-learn>=1.0",
+]
+a2a = [
+    "httpx>=0.25",
+]
+tools = [
+    "slipcore[ml]",
+    "click>=8.0",
+    "rich>=13.0",
+    "tiktoken>=0.5",
+]
+dev = [
+    "slipcore[tools,a2a]",
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "hypothesis>=6.0",
+    "mypy>=1.5",
+    "ruff>=0.1",
+]
+all = ["slipcore[ml,a2a,tools]"]
 
 [project.urls]
 Homepage = "https://github.com/anthony-maio/slipcore"
@@ -38,38 +57,11 @@ Documentation = "https://github.com/anthony-maio/slipcore#readme"
 Repository = "https://github.com/anthony-maio/slipcore"
 Issues = "https://github.com/anthony-maio/slipcore/issues"
 
-[project.optional-dependencies]
-# Embedding-based quantization (more accurate, but heavier)
-embeddings = [
-    "sentence-transformers>=2.2.0",
-    "numpy>=1.24.0",
-]
-# UCR building from conversation corpora
-builder = [
-    "sentence-transformers>=2.2.0",
-    "scikit-learn>=1.3.0",
-    "numpy>=1.24.0",
-]
-# LLM-enhanced dataset generation
-llm = [
-    "httpx>=0.25.0",
-]
-# Development tools
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "ruff>=0.1.0",
-]
-# All optional dependencies
-all = [
-    "sentence-transformers>=2.2.0",
-    "scikit-learn>=1.3.0",
-    "numpy>=1.24.0",
-    "httpx>=0.25.0",
-]
+[tool.hatch.build.targets.wheel]
+packages = ["src/slipcore", "src/slipcore_ml", "src/slipcore_tools"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build]
+include = ["src/slipcore/py.typed", "src/slipcore/data/*.json"]
 
 [tool.ruff]
 line-length = 100
@@ -78,6 +70,14 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 
+[tool.mypy]
+strict = true
+python_version = "3.10"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
+addopts = "--strict-markers -v"
+markers = [
+    "conformance: conformance test vectors",
+    "slow: slow tests requiring ML dependencies",
+]

@@ -1,156 +1,122 @@
-"""
-Slipstream (SLIP) - Semantic Quantization for Efficient Multi-Agent Coordination
+"""Slipcore: Token-efficient agent-to-agent coordination protocol.
 
-A protocol that achieves token efficiency not through syntactic compression,
-but through Semantic Quantization - transmitting pointers to concepts in a
-shared Universal Concept Reference (UCR) rather than raw text.
-
-Key components:
-- UCR: Universal Concept Reference - the semantic manifold
-- Protocol: Token-aligned wire format (no special characters)
-- Quantizer: Think-Quantize-Transmit engine
-- Extensions: Dynamic local anchor learning
-
-Quick start:
-    >>> from slipcore import slip, decode, quantize
-    >>>
-    >>> # Direct message creation
-    >>> wire = slip("alice", "bob", "RequestReview")
-    >>> print(wire)
-    'SLIP v1 alice bob RequestReview'
-    >>>
-    >>> # Think-Quantize-Transmit pattern
-    >>> from slipcore import think_quantize_transmit
-    >>> wire = think_quantize_transmit(
-    ...     "Please review the auth code for security issues",
-    ...     src="dev", dst="reviewer"
-    ... )
+Usage:
+    >>> import slipcore
+    >>> wire = slipcore.format_slip("planner", "exec", "Request", "Plan")
+    >>> wire
+    'SLIP v3 planner exec Request Plan'
+    >>> msg = slipcore.parse_slip(wire)
+    >>> msg.force, msg.obj
+    ('Request', 'Plan')
+    >>> slipcore.render_human(msg)
+    '[planner -> exec] Request Plan: "Request plan creation"'
 """
 
-__version__ = "2.0.0"
+__version__ = "3.0.0a1"
 
-# Core UCR components
+from .errors import (
+    AnchorNotFoundError,
+    MissingExtraError,
+    PolicyViolationError,
+    SlipError,
+    UCRError,
+    UCRVersionMismatchError,
+    WireParseError,
+    WireValidationError,
+)
+from .events import (
+    ExtensionProposed,
+    FallbackEmitted,
+    FallbackStore,
+    Quantized,
+    WireReceived,
+    WireSent,
+    clear_sinks,
+    emit,
+    register_sink,
+    unregister_sink,
+)
+from .intent import (
+    CORE_OBJECTS,
+    ForceToken,
+    Intent,
+    ObjectToken,
+    V2_TO_V3,
+    from_v2_mnemonic,
+    resolve_intent,
+)
+from .render import render_human, render_log_line
 from .ucr import (
     UCR,
     UCRAnchor,
-    Dimension,
-    LEVELS_PER_DIM,
-    CORE_RANGE_END,
+    UCRAuthority,
+    AnchorState,
     create_base_ucr,
-    get_default_ucr,
-    set_default_ucr,
 )
-
-# Protocol - wire format
-from .protocol import (
+from .quantizer import KeywordQuantizer, QuantizeResult, get_default_quantizer, quantize, think_quantize_transmit
+from .extensions import ExtensionManager, FallbackTracker
+from .wire import (
+    WIRE_VERSION,
     SlipMessage,
-    encode,
-    decode,
-    slip,
-    fallback,
-    MessageBuilder,
-    PROTOCOL_MARKER,
-    DEFAULT_VERSION,
+    format_fallback,
+    format_slip,
+    parse_slip,
+    validate_wire,
 )
-
-# Quantizer - Think-Quantize-Transmit
-from .quantizer import (
-    QuantizeResult,
-    KeywordQuantizer,
-    EmbeddingQuantizer,
-    CoordsInferer,
-    SemanticCoords,
-    quantize,
-    think_quantize_transmit,
-    create_quantizer,
-    infer_coords,
-)
-
-# Extensions - dynamic local anchors
-from .extensions import (
-    ExtensionManager,
-    FallbackTracker,
-    get_extension_manager,
-)
-
-# Finetuning - dataset generation for training agents
-from .finetune import (
-    generate_training_examples,
-    generate_dataset,
-    TrainingExample,
-    SYSTEM_PROMPT_BASIC,
-    SYSTEM_PROMPT_DETAILED,
-)
-
-# LLM-enhanced dataset generation (requires httpx)
-try:
-    from .finetune_llm import (
-        generate_dataset_llm,
-        LLMExample,
-        PROVIDERS as LLM_PROVIDERS,
-    )
-    _HAS_LLM_FINETUNE = True
-except ImportError:
-    _HAS_LLM_FINETUNE = False
-
-# UCR Builder - corpus-based construction (requires numpy, sentence-transformers)
-try:
-    from .builder import (
-        UCRBuilder,
-        BuildStats,
-        build_ucr_from_corpus,
-    )
-    _HAS_BUILDER = True
-except ImportError:
-    _HAS_BUILDER = False
 
 __all__ = [
-    # Version
     "__version__",
+    # Wire
+    "SlipMessage",
+    "format_slip",
+    "format_fallback",
+    "parse_slip",
+    "validate_wire",
+    "WIRE_VERSION",
+    # Intent
+    "ForceToken",
+    "ObjectToken",
+    "Intent",
+    "CORE_OBJECTS",
+    "resolve_intent",
+    "from_v2_mnemonic",
+    "V2_TO_V3",
     # UCR
     "UCR",
     "UCRAnchor",
-    "Dimension",
-    "LEVELS_PER_DIM",
-    "CORE_RANGE_END",
+    "UCRAuthority",
+    "AnchorState",
     "create_base_ucr",
-    "get_default_ucr",
-    "set_default_ucr",
-    # Protocol
-    "SlipMessage",
-    "encode",
-    "decode",
-    "slip",
-    "fallback",
-    "MessageBuilder",
-    "PROTOCOL_MARKER",
-    "DEFAULT_VERSION",
+    # Render
+    "render_human",
+    "render_log_line",
+    # Events
+    "emit",
+    "register_sink",
+    "unregister_sink",
+    "clear_sinks",
+    "FallbackStore",
+    "WireSent",
+    "WireReceived",
+    "Quantized",
+    "FallbackEmitted",
+    "ExtensionProposed",
     # Quantizer
-    "QuantizeResult",
     "KeywordQuantizer",
-    "EmbeddingQuantizer",
-    "CoordsInferer",
-    "SemanticCoords",
+    "QuantizeResult",
     "quantize",
     "think_quantize_transmit",
-    "create_quantizer",
-    "infer_coords",
+    "get_default_quantizer",
     # Extensions
     "ExtensionManager",
     "FallbackTracker",
-    "get_extension_manager",
-    # Finetuning
-    "generate_training_examples",
-    "generate_dataset",
-    "TrainingExample",
-    "SYSTEM_PROMPT_BASIC",
-    "SYSTEM_PROMPT_DETAILED",
-    # LLM-enhanced finetuning (optional)
-    "generate_dataset_llm",
-    "LLMExample",
-    "LLM_PROVIDERS",
-    # UCR Builder (optional)
-    "UCRBuilder",
-    "BuildStats",
-    "build_ucr_from_corpus",
+    # Errors
+    "SlipError",
+    "WireParseError",
+    "WireValidationError",
+    "UCRError",
+    "AnchorNotFoundError",
+    "UCRVersionMismatchError",
+    "PolicyViolationError",
+    "MissingExtraError",
 ]

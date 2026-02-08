@@ -1,8 +1,10 @@
 """
-LLM-Enhanced Slipstream Dataset Generator
+LLM-Enhanced Slipstream v3 Dataset Generator.
 
 Generates high-quality Think-Quantize-Transmit training data using LLM APIs.
 More diverse, realistic examples than template-based generation.
+
+Wire format: SLIP v3 <src> <dst> <Force> <Object> [payload...]
 
 Supports:
 - Anthropic Claude API (claude-sonnet-4, claude-haiku)
@@ -32,12 +34,11 @@ import json
 import os
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from .ucr import get_default_ucr, UCRAnchor
 from .finetune import SYSTEM_PROMPT_BASIC, SYSTEM_PROMPT_DETAILED
 
 
@@ -79,36 +80,41 @@ PROVIDERS = {
 
 # ============ Generation Prompts ============
 
-SCENARIO_GENERATION_PROMPT = """You are generating training data for the Slipstream protocol - a semantic quantization system for multi-agent AI coordination.
+SCENARIO_GENERATION_PROMPT = """You are generating training data for the Slipstream v3 protocol - a semantic quantization system for multi-agent AI coordination.
+
+Slipstream v3 uses a factorized intent model: Force (action verb) + Object (domain noun).
+
+Wire format: SLIP v3 <src> <dst> <Force> <Object> [payload...]
 
 Generate {batch_size} diverse, realistic scenarios where AI agents need to communicate. For each scenario, provide:
 1. A natural language instruction (what a user might say)
 2. The agent's internal thought/reasoning about this communication
-3. The source agent name
-4. The destination agent name
-5. The appropriate Slipstream anchor (intent)
-6. Optional payload (additional context)
+3. The source agent name (alphanumeric only, 1-20 chars)
+4. The destination agent name (alphanumeric only, 1-20 chars)
+5. The appropriate Force token (action verb)
+6. The appropriate Object token (domain noun)
+7. Optional payload tokens (alphanumeric only)
 
-Available anchors and their meanings:
-- RequestTask: Ask another agent to perform a task
-- RequestReview: Request code/document review
-- RequestHelp: Ask for assistance
-- RequestPlan: Request a plan be created
-- InformComplete: Report task completion
-- InformProgress: Share progress update
-- InformBlocked: Report being blocked
-- InformStatus: General status update
-- ProposePlan: Suggest a plan
-- ProposeChange: Suggest a modification
-- ProposeAlternative: Offer an alternative approach
-- EvalApprove: Approve something
-- EvalReject: Reject something
-- EvalNeedsWork: Request revisions
-- Accept: Agree to request/proposal
-- Reject: Decline request/proposal
-- MetaAck: Acknowledge receipt
-- MetaHandoff: Transfer responsibility
-- Fallback: For complex unquantizable content
+Force tokens (12 closed vocabulary - use EXACTLY one):
+- Observe: Passively notice state/change/error
+- Inform: Report information (status, completion, blockage, progress)
+- Ask: Request information (clarification, status, permission)
+- Request: Ask for action (task, review, help, plan)
+- Propose: Suggest something (plan, change, alternative)
+- Commit: Commit to something (task, deadline, resource)
+- Eval: Evaluate work (approve, needs work)
+- Meta: Protocol-level (acknowledge, sync, handoff, escalate)
+- Accept: Accept a proposal/request
+- Reject: Decline a proposal/request
+- Error: Report system error (timeout, resource, permission, validation)
+- Fallback: Content too specific for standard tokens
+
+Object tokens (use one of these):
+- State, Change, Error, Result, Status, Complete, Blocked, Progress
+- Clarify, Permission, Resource, Task, Plan, Review, Help
+- Cancel, Priority, Alternative, Rollback, Deadline
+- Approve, NeedsWork, Ack, Sync, Handoff, Escalate, Abort
+- Condition, Defer, Timeout, Validation, Generic
 
 IMPORTANT: Generate diverse scenarios across different domains:
 - Software development (code reviews, deployments, debugging)
@@ -118,43 +124,47 @@ IMPORTANT: Generate diverse scenarios across different domains:
 - Research (papers, experiments, findings)
 - Creative work (designs, content, feedback)
 
-Use realistic agent names like: alice, bob, coordinator, planner, executor, reviewer, team, manager, devops, ml_engineer, frontend, backend, qa, architect, etc.
+Use realistic agent names like: alice, bob, coordinator, planner, executor, reviewer, team, manager, devops, mlEngineer, frontend, backend, qa, architect, etc.
 
 Output as JSON array:
 [
   {{
     "instruction": "Tell the ML team to retrain the model with the new dataset",
     "thought": "The new dataset is ready and I need the ML team to update the model",
-    "src": "data_engineer",
-    "dst": "ml_team",
-    "anchor": "RequestTask",
-    "payload": ["retrain", "new_dataset"]
+    "src": "dataEngineer",
+    "dst": "mlTeam",
+    "force": "Request",
+    "obj": "Task",
+    "payload": ["retrain", "newDataset"]
   }},
   {{
     "instruction": "Check if the kubernetes pods are healthy",
-    "thought": "This is a specific infrastructure check that doesn't map to standard anchors",
+    "thought": "This is a specific infrastructure check that doesn't map to standard tokens",
     "src": "devops",
     "dst": "infra",
-    "anchor": "Fallback",
-    "payload": ["check_kubernetes_pod_health"]
+    "force": "Fallback",
+    "obj": "Generic",
+    "payload": ["refK8sHealth"]
   }},
   ...
 ]
 
 Generate exactly {batch_size} examples. Be creative and diverse!
-Include some Fallback examples for complex/domain-specific requests that don't fit standard anchors."""
+Include some Fallback examples for complex/domain-specific requests that don't fit standard tokens.
+All payload tokens must be alphanumeric only (no underscores, hyphens, or special characters)."""
 
 
-VALIDATION_PROMPT = """Validate this Slipstream training example. Check:
-1. The anchor correctly matches the intent
-2. The wire format is correct: SLIP v1 <src> <dst> <anchor> [payload...]
-3. The instruction is natural and clear
+VALIDATION_PROMPT = """Validate this Slipstream v3 training example. Check:
+1. The Force+Object correctly match the intent
+2. The wire format is correct: SLIP v3 <src> <dst> <Force> <Object> [payload...]
+3. Force is one of: Observe, Inform, Ask, Request, Propose, Commit, Eval, Meta, Accept, Reject, Error, Fallback
+4. The instruction is natural and clear
 
 Example:
 Instruction: "{instruction}"
 Expected output: "{wire}"
 
-Is this correct? Reply with just "VALID" or "INVALID: <reason>"""
+Is this correct? Reply with just "VALID" or "INVALID: <reason>" """
 
 
 # ============ API Clients ============
@@ -222,15 +232,9 @@ def call_openai_compatible(
 
 
 def call_gemini(messages: list[dict], model: str, api_key: str) -> str:
-    """
-    Call Google Gemini API.
-
-    Supports gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-pro, etc.
-    """
+    """Call Google Gemini API."""
     import httpx
 
-    # Convert messages to Gemini format
-    # Gemini uses "contents" with "parts" structure
     system_instruction = None
     contents = []
 
@@ -251,7 +255,6 @@ def call_gemini(messages: list[dict], model: str, api_key: str) -> str:
                 "parts": [{"text": content}]
             })
 
-    # Build request payload
     payload = {
         "contents": contents,
         "generationConfig": {
@@ -265,7 +268,6 @@ def call_gemini(messages: list[dict], model: str, api_key: str) -> str:
             "parts": [{"text": system_instruction}]
         }
 
-    # Gemini API endpoint
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
     response = httpx.post(
@@ -278,7 +280,6 @@ def call_gemini(messages: list[dict], model: str, api_key: str) -> str:
 
     result = response.json()
 
-    # Extract text from response
     try:
         return result["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError) as e:
@@ -303,16 +304,27 @@ def call_llm(
 
 # ============ Dataset Generation ============
 
+VALID_FORCES = frozenset({
+    "Observe", "Inform", "Ask", "Request", "Propose", "Commit",
+    "Eval", "Meta", "Accept", "Reject", "Error", "Fallback",
+})
+
 @dataclass
 class LLMExample:
     """A training example generated by LLM."""
     instruction: str
     src: str
     dst: str
-    anchor: str
-    payload: list[str]
-    wire: str
-    thought: str = ""  # Natural language reasoning for TQT training
+    force: str
+    obj: str
+    payload: list[str] = field(default_factory=list)
+    wire: str = ""
+    thought: str = ""
+
+
+def _clean_token(s: str) -> str:
+    """Remove non-alphanumeric chars from a token."""
+    return "".join(c for c in s if c.isalnum())
 
 
 def generate_batch(
@@ -330,42 +342,35 @@ def generate_batch(
 
     response = call_llm(messages, provider, model, api_key)
 
-    # Parse JSON from response - handle various LLM output quirks
+    # Parse JSON from response
     text = response.strip()
 
     # Remove markdown code blocks
     if text.startswith("```"):
         lines = text.split("\n")
-        # Remove first line (```json) and last line (```)
         text = "\n".join(lines[1:])
         if text.rstrip().endswith("```"):
             text = text.rstrip()[:-3]
 
-    # Try to extract JSON array
     import re
     match = re.search(r'\[[\s\S]*\]', text)
     if match:
         text = match.group()
 
     # Fix common JSON issues from LLMs
-    # 1. Remove trailing commas before ] or }
     text = re.sub(r',\s*([}\]])', r'\1', text)
-    # 2. Fix unescaped newlines in strings (replace with \n)
-    # 3. Remove control characters
     text = re.sub(r'[\x00-\x1f]', ' ', text)
 
     try:
         scenarios = json.loads(text)
     except json.JSONDecodeError as e:
-        # Try line by line parsing for partial recovery
         scenarios = []
         try:
-            # Attempt to parse each object individually
             obj_matches = re.findall(r'\{[^{}]*\}', text)
             for obj_str in obj_matches:
                 try:
                     obj = json.loads(obj_str)
-                    if "instruction" in obj and "anchor" in obj:
+                    if "instruction" in obj and "force" in obj:
                         scenarios.append(obj)
                 except json.JSONDecodeError:
                     continue
@@ -381,25 +386,45 @@ def generate_batch(
     examples = []
     for scenario in scenarios:
         try:
-            payload = scenario.get("payload", [])
-            if isinstance(payload, str):
-                payload = [payload] if payload else []
+            force = scenario["force"]
+            obj = scenario.get("obj", "Generic")
 
-            # Build wire format
-            wire_parts = ["SLIP", "v1", scenario["src"], scenario["dst"], scenario["anchor"]]
+            # Validate force token
+            if force not in VALID_FORCES:
+                # Try to fix common casing issues
+                for vf in VALID_FORCES:
+                    if vf.lower() == force.lower():
+                        force = vf
+                        break
+                else:
+                    print(f"Skipping unknown force: {force}")
+                    continue
+
+            # Clean agent IDs
+            src = _clean_token(scenario.get("src", "agent"))[:20] or "agent"
+            dst = _clean_token(scenario.get("dst", "other"))[:20] or "other"
+
+            # Clean payload
+            raw_payload = scenario.get("payload", [])
+            if isinstance(raw_payload, str):
+                raw_payload = [raw_payload] if raw_payload else []
+            payload = [_clean_token(p) for p in raw_payload if _clean_token(p)]
+
+            # Build v3 wire format
+            wire_parts = ["SLIP", "v3", src, dst, force, obj]
             wire_parts.extend(payload)
             wire = " ".join(wire_parts)
 
-            # Extract thought (generate one if not provided)
             thought = scenario.get("thought", "")
             if not thought:
-                thought = f"I need to {scenario['anchor'].lower()} to {scenario['dst']}"
+                thought = f"I need to {force.lower()} {obj.lower()} to {dst}"
 
             examples.append(LLMExample(
                 instruction=scenario["instruction"],
-                src=scenario["src"],
-                dst=scenario["dst"],
-                anchor=scenario["anchor"],
+                src=src,
+                dst=dst,
+                force=force,
+                obj=obj,
                 payload=payload,
                 wire=wire,
                 thought=thought,
@@ -436,7 +461,7 @@ def to_chat(example: LLMExample, system_prompt: str) -> dict:
 def to_alpaca(example: LLMExample) -> dict:
     """Convert to Alpaca format."""
     return {
-        "instruction": f"Communicate using Slipstream protocol: {example.instruction}",
+        "instruction": f"Communicate using Slipstream v3 protocol: {example.instruction}",
         "input": "",
         "output": example.wire,
     }
@@ -470,33 +495,11 @@ def to_chat_thought(example: LLMExample, system_prompt: str) -> dict:
 
 def to_sharegpt_semantics(example: LLMExample, system_prompt: str) -> dict:
     """Convert to ShareGPT with full semantic annotation (maximum supervision)."""
-    # Infer UCR dimensions from anchor
-    from .ucr import get_default_ucr
-    from .finetune import _get_dimension_labels
-
-    ucr = get_default_ucr()
-    anchor_obj = ucr.get_by_mnemonic(example.anchor)
-
-    dims = []
-    if anchor_obj:
-        labels = _get_dimension_labels(anchor_obj.coords)
-        if labels.get("action"):
-            dims.append(f"ACTION={labels['action']}")
-        if labels.get("domain"):
-            dims.append(f"DOMAIN={labels['domain']}")
-        if labels.get("urgency"):
-            dims.append(f"URGENCY={labels['urgency']}")
-        if labels.get("polarity"):
-            dims.append(f"POLARITY={labels['polarity']}")
-
-    semantic_hint = " | ".join(dims) if dims else f"ANCHOR={example.anchor}"
-
     response = (
         f"THOUGHT: {example.thought}\n"
-        f"QUANTIZE: [{semantic_hint}] -> {example.anchor}\n"
+        f"QUANTIZE: Force={example.force} Object={example.obj}\n"
         f"SLIP: {example.wire}"
     )
-
     return {
         "conversations": [
             {"from": "system", "value": system_prompt},
@@ -518,8 +521,7 @@ def generate_dataset_llm(
     max_workers: int = 4,
     delay_between_batches: float = 0.5,
 ) -> int:
-    """
-    Generate a high-quality Think-Quantize-Transmit dataset using LLM APIs.
+    """Generate a high-quality v3 Think-Quantize-Transmit dataset using LLM APIs.
 
     Args:
         output_path: Where to save the JSONL file
@@ -528,7 +530,7 @@ def generate_dataset_llm(
         model: Model name (uses provider default if not specified)
         api_key: API key (reads from env if not specified)
         format: Output format:
-            - Basic: sharegpt, chat, alpaca (instruction -> SLIP)
+            - Basic: sharegpt, chat, alpaca (instruction -> SLIP v3)
             - TQT: sharegpt_thought, chat_thought, sharegpt_semantics (includes THOUGHT)
         system_prompt: System prompt for training examples
         batch_size: Examples per API call
@@ -541,38 +543,32 @@ def generate_dataset_llm(
     if provider not in PROVIDERS:
         raise ValueError(f"Unknown provider: {provider}. Choose from: {list(PROVIDERS.keys())}")
 
-    # Get API key
     if api_key is None:
         env_key = PROVIDERS[provider]["env_key"]
         api_key = os.environ.get(env_key)
         if not api_key:
             raise ValueError(f"No API key provided. Set {env_key} environment variable or pass --api-key")
 
-    # Get model
     if model is None:
         model = PROVIDERS[provider]["default_model"]
 
-    print(f"Generating {num_examples} examples using {provider}/{model}")
+    print(f"Generating {num_examples} v3 examples using {provider}/{model}")
     print(f"Batch size: {batch_size}, Workers: {max_workers}")
 
-    # Calculate batches needed
     num_batches = (num_examples + batch_size - 1) // batch_size
 
     all_examples: list[LLMExample] = []
 
     converters = {
-        # Basic formats (instruction -> SLIP only)
         "sharegpt": lambda e: to_sharegpt(e, system_prompt),
         "chat": lambda e: to_chat(e, system_prompt),
         "alpaca": to_alpaca,
-        # TQT formats (Think-Quantize-Transmit supervision)
         "sharegpt_thought": lambda e: to_sharegpt_thought(e, system_prompt),
         "chat_thought": lambda e: to_chat_thought(e, system_prompt),
         "sharegpt_semantics": lambda e: to_sharegpt_semantics(e, system_prompt),
     }
     converter = converters.get(format, converters["sharegpt_thought"])
 
-    # Generate in batches
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for i in range(num_batches):
@@ -588,7 +584,6 @@ def generate_dataset_llm(
             )
             futures.append(future)
 
-            # Rate limiting
             time.sleep(delay_between_batches)
 
         for i, future in enumerate(as_completed(futures)):
@@ -599,83 +594,72 @@ def generate_dataset_llm(
             except Exception as e:
                 print(f"Batch {i+1} failed: {e}")
 
-    # Trim to exact count and shuffle
     random.shuffle(all_examples)
     all_examples = all_examples[:num_examples]
 
-    # Write output
     with open(output_path, "w", encoding="utf-8") as f:
         for example in all_examples:
             formatted = converter(example)
             f.write(json.dumps(formatted, ensure_ascii=False) + "\n")
 
-    print(f"\nGenerated {len(all_examples)} examples to {output_path}")
+    print(f"\nGenerated {len(all_examples)} v3 examples to {output_path}")
     return len(all_examples)
 
 
 # ============ CLI ============
 
-def main():
+def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Generate high-quality Slipstream dataset using LLM APIs"
+        description="Generate high-quality Slipstream v3 dataset using LLM APIs"
     )
     parser.add_argument(
         "-o", "--output",
         type=Path,
         default=Path("slipstream_train_llm.jsonl"),
-        help="Output file path",
     )
     parser.add_argument(
         "-n", "--num-examples",
         type=int,
         default=1000,
-        help="Number of examples to generate",
     )
     parser.add_argument(
         "--provider",
         choices=list(PROVIDERS.keys()),
         default="anthropic",
-        help="LLM provider",
     )
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help="Model name (uses provider default if not specified)",
     )
     parser.add_argument(
         "--api-key",
         type=str,
         default=None,
-        help="API key (reads from environment if not specified)",
     )
     parser.add_argument(
         "-f", "--format",
         choices=[
-            "chat", "alpaca", "sharegpt",  # Basic
-            "chat_thought", "sharegpt_thought", "sharegpt_semantics",  # TQT
+            "chat", "alpaca", "sharegpt",
+            "chat_thought", "sharegpt_thought", "sharegpt_semantics",
         ],
         default="sharegpt_thought",
-        help="Output format. TQT formats (sharegpt_thought, sharegpt_semantics) recommended",
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=25,
-        help="Examples per API call",
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=4,
-        help="Parallel API calls",
     )
     parser.add_argument(
         "--detailed-prompt",
         action="store_true",
-        help="Use detailed system prompt",
     )
 
     args = parser.parse_args()
@@ -694,7 +678,7 @@ def main():
             batch_size=args.batch_size,
             max_workers=args.workers,
         )
-        print(f"\nSuccess! Generated {count} examples")
+        print(f"\nSuccess! Generated {count} v3 examples")
         print(f"Ready for finetuning with Unsloth or similar tools")
     except Exception as e:
         print(f"Error: {e}")

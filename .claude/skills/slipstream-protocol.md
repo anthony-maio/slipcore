@@ -1,113 +1,118 @@
 ---
 name: slipstream-protocol
-description: Slipstream Protocol v2 - Semantic Quantization for Multi-Agent Communication
+description: Slipstream Protocol v3 - Factorized Semantic Quantization for Multi-Agent Communication
 ---
 
-# Slipstream Protocol Reference
+# Slipstream Protocol v3 Reference
 
 ## Overview
 
-Slipstream (SLIP) is a semantic quantization protocol for efficient multi-agent coordination. Instead of transmitting verbose natural language, agents communicate via compact references to a shared semantic codebook (UCR).
+Slipstream (SLIP) is a semantic quantization protocol for efficient multi-agent coordination. Instead of transmitting verbose natural language, agents communicate via compact factorized intents: **Force** (action verb) + **Object** (domain noun).
 
-**Key benefit**: 70-80% token reduction vs JSON-wrapped messages.
+**Key benefit**: 80%+ token reduction vs JSON-wrapped messages.
 
 ## Wire Format
 
 ```
-SLIP v1 <src> <dst> <anchor> [payload...]
+SLIP v3 <src> <dst> <Force> <Object> [payload...]
 ```
 
-- `SLIP v1` - Protocol marker and version
-- `<src>` - Source agent identifier
-- `<dst>` - Destination agent identifier
-- `<anchor>` - UCR semantic anchor (the intent)
-- `[payload...]` - Optional unquantizable content
+- `SLIP v3` - Protocol marker and version
+- `<src>` - Source agent ID (1-20 alphanumeric chars)
+- `<dst>` - Destination agent ID (1-20 alphanumeric chars)
+- `<Force>` - Action verb from closed vocabulary (12 tokens)
+- `<Object>` - Domain noun (30+ registered, extensible)
+- `[payload...]` - Optional alphanumeric tokens
 
-## Core Anchors (UCR v1.0)
+## Force Tokens (12 closed vocabulary)
 
-### Requests
-| Anchor | Description |
-|--------|-------------|
-| `RequestTask` | Ask agent to do something |
-| `RequestPlan` | Ask for a plan |
-| `RequestReview` | Ask for code/plan review |
-| `RequestHelp` | Ask for assistance |
-| `RequestCancel` | Request cancellation |
-| `RequestResource` | Request resource allocation |
+| Force | Action Coord | Description |
+|-------|-------------|-------------|
+| `Observe` | 0 | Passively notice state/change/error |
+| `Inform` | 1 | Report information |
+| `Ask` | 2 | Request information |
+| `Request` | 3 | Ask for action |
+| `Propose` | 4 | Suggest something |
+| `Commit` | 5 | Commit to something |
+| `Eval` | 6 | Evaluate work |
+| `Meta` | 7 | Protocol-level operations |
+| `Accept` | 3 | Accept proposal/request |
+| `Reject` | 3 | Decline proposal/request |
+| `Error` | 6 | Report system error |
+| `Fallback` | 7 | Unquantizable content |
 
-### Information
-| Anchor | Description |
-|--------|-------------|
-| `InformComplete` | Report task completion |
-| `InformProgress` | Share progress update |
-| `InformBlocked` | Report being blocked |
-| `InformStatus` | General status update |
-| `InformResult` | Share computed result |
+## Core Object Tokens
 
-### Proposals
-| Anchor | Description |
-|--------|-------------|
-| `ProposePlan` | Suggest a plan |
-| `ProposeChange` | Suggest a modification |
-| `ProposeAlternative` | Suggest alternative approach |
-| `ProposeRollback` | Suggest reverting changes |
-
-### Evaluations
-| Anchor | Description |
-|--------|-------------|
-| `EvalApprove` | Approve/accept something |
-| `EvalReject` | Reject something |
-| `EvalNeedsWork` | Request revisions |
-| `EvalComplete` | Mark as complete |
-
-### Meta/Control
-| Anchor | Description |
-|--------|-------------|
-| `Accept` | Accept a proposal/request |
-| `Reject` | Decline a proposal/request |
-| `MetaAck` | Acknowledge receipt |
-| `MetaHandoff` | Hand off responsibility |
-| `MetaEscalate` | Escalate issue |
-| `Fallback` | Unquantizable (see payload) |
+| Category | Objects |
+|----------|---------|
+| **State** | `State`, `Change`, `Error`, `Result` |
+| **Progress** | `Status`, `Complete`, `Blocked`, `Progress` |
+| **Communication** | `Clarify`, `Permission`, `Resource` |
+| **Work** | `Task`, `Plan`, `Review`, `Help` |
+| **Control** | `Cancel`, `Priority`, `Alternative`, `Rollback`, `Deadline` |
+| **Evaluation** | `Approve`, `NeedsWork` |
+| **Protocol** | `Ack`, `Sync`, `Handoff`, `Escalate`, `Abort` |
+| **Misc** | `Condition`, `Defer`, `Timeout`, `Validation`, `Generic` |
 
 ## Examples
 
 ```
-# Simple request
-SLIP v1 alice bob RequestReview
+# Request a code review
+SLIP v3 alice bob Request Review auth
 
-# With payload
-SLIP v1 planner executor RequestTask implement_auth_module
+# Report task completion
+SLIP v3 worker manager Inform Complete task42
 
-# Report completion
-SLIP v1 developer team InformComplete user_service
+# Propose a plan
+SLIP v3 planner team Propose Plan auth
 
-# Approve with note
-SLIP v1 reviewer author EvalApprove lgtm
+# Approve work
+SLIP v3 reviewer author Eval Approve
 
-# Fallback for complex content
-SLIP v1 devops sre Fallback check kubernetes pods for OOMKilled
+# Fallback for complex content (pointer-based)
+SLIP v3 devops sre Fallback Generic ref7f3a
+
+# Accept a proposal
+SLIP v3 pm dev Accept Generic
+
+# Report error
+SLIP v3 monitor ops Error Timeout api
 ```
 
 ## Python Usage
 
 ```python
-from slipcore import slip, decode, quantize, think_quantize_transmit
+from slipcore import (
+    format_slip, parse_slip, format_fallback, validate_wire,
+    render_human, render_log_line,
+    ForceToken, resolve_intent, from_v2_mnemonic,
+    create_base_ucr, KeywordQuantizer,
+)
 
 # Create message directly
-wire = slip("alice", "bob", "RequestReview")
-# -> "SLIP v1 alice bob RequestReview"
+wire = format_slip("alice", "bob", "Request", "Review")
+# -> "SLIP v3 alice bob Request Review"
 
-# Think-Quantize-Transmit pattern
-wire = think_quantize_transmit(
-    "Please check the auth code for security issues",
-    src="dev", dst="reviewer"
-)
-# -> "SLIP v1 dev reviewer RequestReview"
+# With payload
+wire = format_slip("planner", "exec", "Request", "Task", ["auth"])
+# -> "SLIP v3 planner exec Request Task auth"
 
-# Decode
-msg = decode(wire)
-print(msg.anchor.canonical)  # "Request review of work"
+# Parse
+msg = parse_slip(wire)
+print(msg.force, msg.obj, msg.payload)
+
+# Human-readable
+print(render_human(msg))
+# [planner -> exec] Request Task: "Request task execution" (payload: auth)
+
+# Keyword quantizer (stdlib-only, no ML deps)
+q = KeywordQuantizer()
+wire = q.quantize("Please review the auth code", "dev", "reviewer")
+# -> "SLIP v3 dev reviewer Request Review"
+
+# Validate wire format
+issues = validate_wire("SLIP v3 a b Request Plan")
+# -> [] (empty = valid)
 ```
 
 ## UCR Semantic Manifold
@@ -127,12 +132,14 @@ Core anchors: 0x0000-0x7FFF (standard, immutable)
 Extension anchors: 0x8000-0xFFFF (installation-specific)
 
 ```python
-from slipcore import ExtensionManager
+from slipcore import ExtensionManager, create_base_ucr
 
-manager = ExtensionManager()
+ucr = create_base_ucr()
+manager = ExtensionManager(ucr)
 anchor = manager.add_extension(
+    force="Request",
+    obj="K8sScale",
     canonical="Request Kubernetes scaling",
-    mnemonic="RequestK8sScale",
 )
 ```
 
@@ -140,5 +147,6 @@ anchor = manager.add_extension(
 
 1. **No special characters** - Avoids BPE fragmentation
 2. **Space-separated** - Clean tokenization
-3. **CamelCase anchors** - Often single tokens
-4. **Semantic not syntactic** - Meaning over compression
+3. **Factorized intents** - Force + Object instead of flat anchors
+4. **Pointer-based fallback** - Raw text never on wire
+5. **Zero core dependencies** - stdlib-only core package

@@ -1,0 +1,20 @@
+{"wire": "SLIP v3 planner exec Request Plan", "expected": {"src": "planner", "dst": "exec", "force": "Request", "obj": "Plan", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 qa dev Request Review auth module", "expected": {"src": "qa", "dst": "dev", "force": "Request", "obj": "Review", "payload": ["auth", "module"], "fallback_ref": null}}
+{"wire": "SLIP v3 a b Observe Error", "expected": {"src": "a", "dst": "b", "force": "Observe", "obj": "Error", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 router backend Inform Complete", "expected": {"src": "router", "dst": "backend", "force": "Inform", "obj": "Complete", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 pm dev Meta Ack", "expected": {"src": "pm", "dst": "dev", "force": "Meta", "obj": "Ack", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 qa planner Fallback Generic ref7f3a", "expected": {"src": "qa", "dst": "planner", "force": "Fallback", "obj": "Generic", "payload": [], "fallback_ref": "ref7f3a"}}
+{"wire": "SLIP v3 dev team Inform Status deployment", "expected": {"src": "dev", "dst": "team", "force": "Inform", "obj": "Status", "payload": ["deployment"], "fallback_ref": null}}
+{"wire": "SLIP v3 lead architect Propose Plan redis caching", "expected": {"src": "lead", "dst": "architect", "force": "Propose", "obj": "Plan", "payload": ["redis", "caching"], "fallback_ref": null}}
+{"wire": "SLIP v3 reviewer dev Eval NeedsWork", "expected": {"src": "reviewer", "dst": "dev", "force": "Eval", "obj": "NeedsWork", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 coordinator team Commit Task sprint3", "expected": {"src": "coordinator", "dst": "team", "force": "Commit", "obj": "Task", "payload": ["sprint3"], "fallback_ref": null}}
+{"wire": "SLIP v3 monitor ops Observe Change deploy42", "expected": {"src": "monitor", "dst": "ops", "force": "Observe", "obj": "Change", "payload": ["deploy42"], "fallback_ref": null}}
+{"wire": "SLIP v3 eng manager Ask Permission", "expected": {"src": "eng", "dst": "manager", "force": "Ask", "obj": "Permission", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 pm team Accept Generic", "expected": {"src": "pm", "dst": "team", "force": "Accept", "obj": "Generic", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 qa dev Reject Generic reason42", "expected": {"src": "qa", "dst": "dev", "force": "Reject", "obj": "Generic", "payload": ["reason42"], "fallback_ref": null}}
+{"wire": "SLIP v3 sre infra Error Timeout api", "expected": {"src": "sre", "dst": "infra", "force": "Error", "obj": "Timeout", "payload": ["api"], "fallback_ref": null}}
+{"wire": "SLIP v3 dev ops Inform Blocked credentials", "expected": {"src": "dev", "dst": "ops", "force": "Inform", "obj": "Blocked", "payload": ["credentials"], "fallback_ref": null}}
+{"wire": "SLIP v3 arch team Propose Alternative GraphQL", "expected": {"src": "arch", "dst": "team", "force": "Propose", "obj": "Alternative", "payload": ["GraphQL"], "fallback_ref": null}}
+{"wire": "SLIP v3 bot1 bot2 Meta Sync", "expected": {"src": "bot1", "dst": "bot2", "force": "Meta", "obj": "Sync", "payload": [], "fallback_ref": null}}
+{"wire": "SLIP v3 lead dev Meta Handoff auth", "expected": {"src": "lead", "dst": "dev", "force": "Meta", "obj": "Handoff", "payload": ["auth"], "fallback_ref": null}}
+{"wire": "SLIP v3 x y Eval Approve", "expected": {"src": "x", "dst": "y", "force": "Eval", "obj": "Approve", "payload": [], "fallback_ref": null}}
