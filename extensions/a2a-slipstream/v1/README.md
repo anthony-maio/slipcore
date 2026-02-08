@@ -94,7 +94,7 @@ SLIP v3 <src> <dst> <Force> <Object> [payload...]
 Example:
 
 ```text
-SLIP v3 planner reviewer Request Review auth_module
+SLIP v3 planner reviewer Request Review auth
 ```
 
 The wire format uses two intent tokens: a **Force** token drawn from a closed set of 12 values, followed by an **Object** token that names the target concept.
@@ -179,7 +179,7 @@ A2A-Extensions: https://github.com/anthony-maio/slipcore/extensions/a2a-slipstre
   "message": {
     "messageId": "0d9c9a1d-7c08-4d2b-9f90-5e4b6b3fd4a1",
     "role": "user",
-    "parts": [{"text": "SLIP v3 planner reviewer Request Review auth_module"}],
+    "parts": [{"text": "SLIP v3 planner reviewer Request Review auth"}],
     "extensions": ["https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1"],
     "metadata": {
       "https://github.com/anthony-maio/slipcore/extensions/a2a-slipstream/v1": {

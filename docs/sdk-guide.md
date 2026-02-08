@@ -1101,7 +1101,7 @@ a2a_message = {
         "slipstream": {
             "slipVersion": "v3",
             "ucrVersion": "3.0.0",
-            "ucrHash": ucr.content_hash(),
+            "ucrHash": "sha256:" + ucr.content_hash(),  # A2A spec requires sha256: prefix
         }
     }
 }
