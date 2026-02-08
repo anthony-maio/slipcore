@@ -1,0 +1,104 @@
+; Slipstream (SLIP) v3 wire format -- Augmented BNF (RFC 5234)
+;
+; Normative grammar for the factorized Force-Object wire protocol.
+; All tokens are alphanumeric and space-delimited for clean BPE tokenization.
+;
+; Reference implementation: slipcore.wire (Python)
+; Conformance vectors: spec/conformance/*.jsonl
+
+; ---------------------------------------------------------------
+; Top-level message
+; ---------------------------------------------------------------
+
+slip-message   = slip-prefix SP agent-id SP agent-id SP force SP object
+                 0*20( SP payload-token )
+
+slip-prefix    = %x53.4C.49.50 SP version    ; literal "SLIP" SP version
+version        = %x76 1*DIGIT                ; "v" followed by digits ("v3")
+
+; ---------------------------------------------------------------
+; Agent identifiers
+; ---------------------------------------------------------------
+; Short, stable, tokenizer-friendly. No punctuation.
+
+agent-id       = 1*20( ALPHA / DIGIT )
+
+; ---------------------------------------------------------------
+; Force token (closed vocabulary, 12 members)
+; ---------------------------------------------------------------
+; The Force dimension classifies the speech-act type.
+; This set is immutable within a major version.
+
+force          = "Observe"  /
+                 "Inform"   /
+                 "Ask"      /
+                 "Request"  /
+                 "Propose"  /
+                 "Commit"   /
+                 "Eval"     /
+                 "Meta"     /
+                 "Accept"   /
+                 "Reject"   /
+                 "Error"    /
+                 "Fallback"
+
+; ---------------------------------------------------------------
+; Object token (extensible vocabulary)
+; ---------------------------------------------------------------
+; The Object dimension classifies the domain concept.
+; Core objects are defined by the UCR; extensions may add more.
+; On the wire, any alphanumeric string 1-30 chars is valid.
+
+object         = 1*30( ALPHA / DIGIT )
+
+; ---------------------------------------------------------------
+; Payload tokens (optional, 0-20 tokens)
+; ---------------------------------------------------------------
+; Additional context. Each token is a safe alphanumeric identifier.
+; For free-form text, use Force=Fallback with a pointer ref.
+
+payload-token  = 1*30( ALPHA / DIGIT )
+
+; ---------------------------------------------------------------
+; Fallback variant
+; ---------------------------------------------------------------
+; When Force="Fallback" and Object="Generic", the first payload
+; token is a reference pointer to locally-stored raw text.
+;
+;   SLIP v3 src dst Fallback Generic ref7f3a1b2c
+;
+; The ref token is 1-16 alphanumeric characters.
+
+fallback-ref   = 1*16( ALPHA / DIGIT )
+
+; ---------------------------------------------------------------
+; Terminal definitions (RFC 5234 core rules)
+; ---------------------------------------------------------------
+
+SP             = %x20
+ALPHA          = %x41-5A / %x61-7A    ; A-Z / a-z
+DIGIT          = %x30-39              ; 0-9
+
+; ---------------------------------------------------------------
+; Examples
+; ---------------------------------------------------------------
+;
+; Standard message:
+;   SLIP v3 planner executor Request Task auth refactor
+;
+; Fallback message:
+;   SLIP v3 devops sre Fallback Generic ref7f3a1b2c
+;
+; Minimal message (no payload):
+;   SLIP v3 alice bob Inform Complete
+;
+; ---------------------------------------------------------------
+; Constraints not expressible in ABNF
+; ---------------------------------------------------------------
+;
+; 1. src and dst MUST differ (no self-messaging)
+; 2. When force="Fallback", object SHOULD be "Generic"
+; 3. When force="Fallback", first payload token is the fallback-ref
+; 4. Total wire length SHOULD NOT exceed 200 characters
+; 5. Force tokens are case-sensitive (exactly as listed above)
+; 6. The version for this spec is "v3"

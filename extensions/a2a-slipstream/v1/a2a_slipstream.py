@@ -1,8 +1,8 @@
 """
 Slipstream over A2A (SLIP-A2A) — Reference helpers
 
-Goal: encode Slipstream wire text inside A2A Messages using A2A extensions,
-while keeping the model-visible text token-friendly.
+Goal: encode Slipstream v3 Force-Object wire text inside A2A Messages using
+A2A extensions, while keeping the model-visible text token-friendly.
 
 This module is intentionally small and dependency-free (stdlib only).
 """
@@ -41,11 +41,11 @@ def stable_ucr_hash(ucr_dict: Dict[str, Any]) -> str:
     Compute a stable sha256 hash for UCR compatibility checks.
 
     ucr_dict format expectation (matches slipcore.ucr.UCR.save output):
-      { "version": "...", "anchors": [ {index, mnemonic, canonical, coords, ...}, ... ] }
+      { "version": "...", "anchors": [ {index, force, obj, canonical, coords, ...}, ... ] }
 
     Hash canonicalization:
       - sort anchors by index
-      - per anchor: index|mnemonic|canonical|coords (coords as comma-joined ints)
+      - per anchor: index|force|obj|canonical|coords (coords as comma-joined ints)
       - newline separated
     """
     anchors = list(ucr_dict.get("anchors", []))
@@ -54,11 +54,12 @@ def stable_ucr_hash(ucr_dict: Dict[str, Any]) -> str:
     lines: List[str] = []
     for a in anchors:
         idx = int(a.get("index", 0))
-        mnemonic = str(a.get("mnemonic", ""))
+        force = str(a.get("force", ""))
+        obj = str(a.get("obj", ""))
         canonical = str(a.get("canonical", ""))
         coords = a.get("coords", [])
         coords_s = ",".join(str(int(x)) for x in coords) if isinstance(coords, list) else str(coords)
-        lines.append(f"{idx}|{mnemonic}|{canonical}|{coords_s}")
+        lines.append(f"{idx}|{force}|{obj}|{canonical}|{coords_s}")
 
     payload = ("\n".join(lines)).encode("utf-8")
     return "sha256:" + sha256(payload).hexdigest()
@@ -70,11 +71,11 @@ def stable_ucr_hash(ucr_dict: Dict[str, Any]) -> str:
 
 def build_agentcard_extension(
     *,
-    slip_version: str = "v1",
+    slip_version: str = "v3",
     ucr_version: Optional[str] = None,
     ucr_hash: Optional[str] = None,
     required: bool = False,
-    description: str = "Accepts Slipstream wire text in Message.parts[].text using mnemonic anchors.",
+    description: str = "Accepts Slipstream wire text in Message.parts[].text using Force-Object factorized intents.",
     params: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -103,7 +104,7 @@ def build_slip_a2a_message(
     message_id: Optional[str] = None,
     context_id: Optional[str] = None,
     task_id: Optional[str] = None,
-    slip_version: str = "v1",
+    slip_version: str = "v3",
     ucr_version: Optional[str] = None,
     ucr_hash: Optional[str] = None,
     confidence: Optional[float] = None,
@@ -135,7 +136,7 @@ def build_slip_a2a_message(
         msg["extensions"] = [SLIP_A2A_EXTENSION_URI]
         meta: Dict[str, Any] = {
             "slipVersion": slip_version,
-            "encoding": "mnemonic",
+            "encoding": "force-object",
         }
         if ucr_version is not None:
             meta["ucrVersion"] = ucr_version
@@ -167,7 +168,7 @@ def build_send_message_http_json(
     role: str = "user",
     context_id: Optional[str] = None,
     task_id: Optional[str] = None,
-    slip_version: str = "v1",
+    slip_version: str = "v3",
     ucr_version: Optional[str] = None,
     ucr_hash: Optional[str] = None,
     confidence: Optional[float] = None,
@@ -227,7 +228,7 @@ def build_send_message_jsonrpc(
     role: str = "user",
     context_id: Optional[str] = None,
     task_id: Optional[str] = None,
-    slip_version: str = "v1",
+    slip_version: str = "v3",
     ucr_version: Optional[str] = None,
     ucr_hash: Optional[str] = None,
     confidence: Optional[float] = None,
