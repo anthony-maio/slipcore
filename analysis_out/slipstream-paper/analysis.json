@@ -1,0 +1,75 @@
+{
+  "schema_version": "paper_analysis_v1",
+  "pdf": {
+    "path": "D:\\Development\\slipcore\\private\\zenodo\\slipstream-paper.pdf",
+    "filename": "slipstream-paper.pdf",
+    "sha256": "e91b687dbbe2aa4fe01ec0ae3c5475fda9ad2a5107ea8e81927028c575c707f7",
+    "page_count": 7,
+    "text_pages_extracted": 7,
+    "extracted_chars": 11939
+  },
+  "paper": {
+    "title": "Slipstream: Semantic Quantization for Efficient Multi-Agent Coordination",
+    "authors": [
+      "Anthony Maio"
+    ],
+    "abstract": "As multi-agent LLM systems scale,coordination bandwidthbecomes a primary cost\ndriver: every token spent on routing, intent framing, and redundant context is paid repeat-\nedly across agents and turns. Current approaches waste 40–60% of compute on coordination\noverhead, with communication costs scalingO(n2)as agent counts increase.\nThis paper introducesSlipstream, a protocol that performssemantic quantization:\nmapping free-form messages onto a sharedUniversal Concept Reference (UCR)and\ntransmitting compactmnemonic anchorsthat identify structured intents. Unlike syn-\ntactic compression (which fails due to BPE tokenizer fragmentation), Slipstream transmits\nnatural-language mnemonics that tokenize efficiently across model architectures.\nSlipstream combines (1) a symbolic4D semantic manifold—Action, Polarity, Domain,\nUrgency—with (2) a data-drivenvector engine(embeddings + nearest-centroid retrieval)\nplus anevolutionary extension layerthat learns new anchors from low-confidence traf-\nfic. Results show82% token reduction(41.9→7.4 tokens average) while maintaining\nsemantic fidelity, making large-scale multi-agent deployments economically viable."
+  },
+  "artifacts": {
+    "urls": [
+      "https://github.com/anthony-maio/slipcore",
+      "https://modelcontextprotocol.io/,",
+      "https://www.linuxfoundation."
+    ],
+    "hf_models": [],
+    "hf_datasets": [],
+    "hf_spaces": [],
+    "possible_hf_repo_ids": [
+      "Edge/embedded",
+      "Msg/Day",
+      "REQ/TSK",
+      "messages/day",
+      "org/press"
+    ],
+    "github_repos": [
+      "anthony-maio/slipcore"
+    ],
+    "arxiv_ids": [
+      "1982.10564",
+      "2690.17728"
+    ],
+    "dois": [
+      "10.1109/TIT.1982.1056489",
+      "10.1145/1772690.1772862",
+      "10.18653/v1/D19-1410"
+    ]
+  },
+  "suggested": {
+    "space_slug": "slipstream-semantic-quantization-for-efficient-m",
+    "space_title": "Slipstream: Semantic Quantization for Efficient Multi-Agent Coordination",
+    "tags": [
+      "semantic-quantization",
+      "multi-agent-systems",
+      "protocol-standards",
+      "token-ef-"
+    ],
+    "emoji": "📄",
+    "colorFrom": "blue",
+    "colorTo": "indigo"
+  },
+  "outputs": {
+    "context_txt": "paper_context.txt",
+    "chunks_jsonl": "paper_chunks.jsonl",
+    "rendered_pages": [
+      {
+        "page": 1,
+        "path": "pages\\page_01.png"
+      },
+      {
+        "page": 2,
+        "path": "pages\\page_02.png"
+      }
+    ],
+    "extracted_images": []
+  }
+}

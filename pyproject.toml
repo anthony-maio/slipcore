@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "slipcore"
-version = "3.0.0"
+version = "3.0.1"
 description = "Token-efficient agent-to-agent coordination protocol"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -59,9 +59,6 @@ Issues = "https://github.com/anthony-maio/slipcore/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/slipcore", "src/slipcore_ml", "src/slipcore_tools"]
-
-[tool.hatch.build]
-include = ["src/slipcore/py.typed", "src/slipcore/data/*.json"]
 
 [tool.ruff]
 line-length = 100
