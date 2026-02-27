@@ -70,7 +70,7 @@ class TestMissingExtraError:
 
     def test_is_catchable_as_slip_error(self):
         with pytest.raises(SlipError):
-            raise MissingExtraError("click", "tools")
+            raise MissingExtraError("numpy", "ml")
 
 
 class TestSimpleErrors:

@@ -32,12 +32,13 @@ twine check dist/*
 
 ### 4. Tag and Release
 ```bash
-# Tag the release (use current version)
-git tag -a v3.1.0 -m "Slipstream v3.1.0"
-git push origin v3.1.0
+# Tag the release (use version from pyproject.toml)
+VERSION=$(python -c "import slipcore; print(slipcore.__version__)")
+git tag -a "v${VERSION}" -m "Slipstream v${VERSION}"
+git push origin "v${VERSION}"
 
 # Create release on GitHub
-gh release create v3.1.0 --title "Slipstream v3.1.0" --notes "See CHANGELOG.md"
+gh release create "v${VERSION}" --title "Slipstream v${VERSION}" --notes "See CHANGELOG.md"
 ```
 
 ### 5. CI/CD Auto-Publish

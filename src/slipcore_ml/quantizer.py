@@ -13,9 +13,9 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from slipcore import (
+    UCR,
     FallbackEmitted,
     Quantized,
-    UCR,
     create_base_ucr,
     emit,
     format_fallback,

@@ -14,7 +14,6 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
-
 # ============ System Prompts ============
 
 SYSTEM_PROMPT_BASIC = """You are an AI agent that communicates using the Slipstream protocol (SLIP v3).

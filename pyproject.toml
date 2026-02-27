@@ -64,6 +64,11 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 
+[tool.ruff.lint.per-file-ignores]
+# Multiline string literals contain LLM prompt text that cannot be reformatted
+"src/slipcore/finetune.py" = ["E501"]
+"src/slipcore/finetune_llm.py" = ["E501"]
+
 [tool.mypy]
 strict = true
 python_version = "3.10"

@@ -5,11 +5,11 @@ Cluster fallback traffic to discover new anchor candidates.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 import numpy as np
 
-from slipcore.ucr import UCR, UCRAnchor, AnchorState, Coords
+from slipcore.ucr import UCR, AnchorState, Coords, UCRAnchor
 
 try:
     from sklearn.cluster import MiniBatchKMeans
