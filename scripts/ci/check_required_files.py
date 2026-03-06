@@ -17,7 +17,8 @@ REQUIRED_FILES = [
     "docs/claim-map.md",
     "docs/paper/slipstream-v3.1.md",
     "docs/start-here.md",
-    "docs/migration-v4.md",
+    "docs/langgraph-guide.md",
+    "docs/migration-v3-1.md",
 ]
 
 

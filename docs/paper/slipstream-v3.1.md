@@ -12,7 +12,7 @@ Large multi-agent LLM systems pay a repeated coordination cost: every routing to
 
 Slipstream v3.1 keeps the wire protocol version at `SLIP v3` and preserves the factorized Force-Object intent model introduced in v3. The v3.1 contribution is release hardening and open-source operational maturity: strict fallback invariants, closed Force vocabulary enforcement, core-anchor immutability at runtime, explicit legacy migration behavior, and maintainer-led governance gates that require paper/spec/code/test parity for normative changes.
 
-The implementation (project release `v4.0.0`) remains zero-dependency in core, supports optional ML quantization, and currently passes 568 automated tests. Prior benchmarking reports approximately 82% token reduction for coordination messages versus JSON baselines while preserving semantic intent. This paper documents the model, protocol invariants, governance process, and reproducibility workflow used to keep research claims synchronized with shipped behavior.
+The implementation (project release `v3.1.0`) remains zero-dependency in core, supports optional ML quantization, and currently passes 579 automated tests. Prior benchmarking reports approximately 82% token reduction for coordination messages versus JSON baselines while preserving semantic intent. This paper documents the model, protocol invariants, governance process, and reproducibility workflow used to keep research claims synchronized with shipped behavior.
 
 Keywords: semantic quantization, multi-agent systems, protocol design, intent factorization, governance, reproducibility
 
@@ -35,11 +35,12 @@ Slipstream v3.1 preserves this semantic model and wire grammar but hardens confo
 - Runtime prevention of Force extension and core-anchor mutation.
 - Explicit migration path for legacy permissive behavior.
 - Mandatory parity gates across paper, spec, code, and tests.
+- Python-first adoption path with LangGraph transport adapters.
 
 ### 1.3 Versioning Clarification
 
 - Protocol wire version: `SLIP v3`.
-- Open-source package release for hardening changes: `v4.0.0`.
+- Open-source package release for hardening changes: `v3.1.0`.
 
 The semantic protocol and the package semantic version are intentionally decoupled.
 
@@ -159,7 +160,7 @@ Prior results indicate factorized Force-Object modeling improves reliability ver
 
 As of this draft (`2026-03-06`):
 
-- Test suite status: 568 passed.
+- Test suite status: 579 passed.
 - Core package: zero external dependencies.
 - Build checks: wheel and sdist build successfully; metadata checks pass.
 
@@ -182,6 +183,7 @@ Key properties:
 - Spec invariants: `spec/spec-00-invariants.md`
 - Claim map: `docs/claim-map.md`
 - Core wire/UCR implementation: `src/slipcore/wire.py`, `src/slipcore/ucr.py`
+- LangGraph adapter: `src/slipcore/langgraph.py` and `docs/langgraph-guide.md`
 - Conformance vectors: `spec/conformance/*.jsonl`
 - Tests: `tests/`
 - Release checklist: `RELEASE_CHECKLIST.md`
