@@ -22,6 +22,7 @@ Typical JSON coordination messages (~40+ tokens) compress to ~6-8 wire tokens.
 - [SDK reference](docs/sdk-guide.md)
 - [v3 -> v4 migration notes](docs/migration-v4.md)
 - [Protocol invariants](spec/spec-00-invariants.md)
+- [Canonical paper source (v3.1 markdown)](docs/paper/slipstream-v3.1.md)
 
 ## Install
 

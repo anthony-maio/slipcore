@@ -6,8 +6,12 @@ import argparse
 from pathlib import Path
 
 SECTION_HEADINGS = {
+    "1": "## 1. Pre-Release Quality Gate",
+    "2": "## 2. Conformance / Migration Gate",
     "3": "## 3. Paper / Spec / Code Sync Gate",
     "4": "## 4. Governance Gate",
+    "5": "## 5. Build and Install Gate",
+    "7": "## 7. Model and Dataset Consistency",
 }
 
 
@@ -31,12 +35,25 @@ def _is_checked(item: str) -> bool:
     return item.startswith("- [x]") or item.startswith("- [X]")
 
 
+def _parse_sections(raw: str) -> list[str]:
+    items = [part.strip() for part in raw.split(",") if part.strip()]
+    invalid = [item for item in items if item not in SECTION_HEADINGS]
+    if invalid:
+        raise ValueError(f"Unknown checklist section id(s): {', '.join(invalid)}")
+    return items
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--sections",
+        default="1,2,3,4,5,7",
+        help="Comma-separated checklist section numbers to validate (default: 1,2,3,4,5,7).",
+    )
+    parser.add_argument(
         "--require-checked",
         action="store_true",
-        help="Fail if any checklist item in sections 3 and 4 is unchecked.",
+        help="Fail if any checklist item in selected sections is unchecked.",
     )
     args = parser.parse_args()
 
@@ -48,8 +65,14 @@ def main() -> int:
 
     lines = checklist.read_text(encoding="utf-8").splitlines()
     failures: list[str] = []
+    try:
+        section_ids = _parse_sections(args.sections)
+    except ValueError as exc:
+        print(str(exc))
+        return 1
 
-    for section_id, heading in SECTION_HEADINGS.items():
+    for section_id in section_ids:
+        heading = SECTION_HEADINGS[section_id]
         items = _collect_section_items(lines, heading)
         if not items:
             failures.append(f"Section {section_id} missing or has no checklist items.")
@@ -68,9 +91,9 @@ def main() -> int:
         return 1
 
     if args.require_checked:
-        print("Release checklist sections 3 and 4 are complete.")
+        print(f"Release checklist sections {', '.join(section_ids)} are complete.")
     else:
-        print("Release checklist sections 3 and 4 are structurally valid.")
+        print(f"Release checklist sections {', '.join(section_ids)} are structurally valid.")
     return 0
 
 

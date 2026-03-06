@@ -43,3 +43,8 @@ Extension object growth must be controlled:
 
 Maintainers control release tags and PyPI publication.
 Release checklist in `RELEASE_CHECKLIST.md` is mandatory.
+
+## Paper Source of Truth
+
+- Canonical tracked paper source: `docs/paper/slipstream-v3.1.md`.
+- Optional publication artifacts (LaTeX/PDF) may be generated elsewhere, but normative content must first land in the tracked markdown source in this repository.

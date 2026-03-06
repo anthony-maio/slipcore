@@ -1,6 +1,7 @@
 # Paper / Spec / Code Claim Map
 
 This table is a release gate for normative changes.
+Canonical tracked paper source: `docs/paper/slipstream-v3.1.md`.
 
 | Paper Section | Protocol Claim | Spec Source | Code Source | Test Source |
 |---|---|---|---|---|

@@ -15,7 +15,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - Explicit legacy migration helper: `parse_slip_legacy()` for permissive fallback wire migration
 - Governance package: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `GOVERNANCE.md`, `MAINTAINERS.md`, `CODEOWNERS`, and PR/issue templates
 - Paper/spec/code release parity artifact: `docs/claim-map.md`
+- Canonical tracked paper source for parity: `docs/paper/slipstream-v3.1.md`
 - New adoption docs: `docs/start-here.md` and `docs/migration-v4.md`
+- Release checklist gate script now validates sections 1/2/3/4/5/7 and can enforce full completion on release events
 
 ### Fixed
 - README quickstart used invalid `KeywordQuantizer.quantize(..., src=..., dst=...)` usage

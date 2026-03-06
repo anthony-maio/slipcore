@@ -65,4 +65,5 @@ assert msg.fallback_ref == "reflegacy"
 - [SDK guide](sdk-guide.md)
 - [v3 -> v4 migration](migration-v4.md)
 - [Protocol invariants](../spec/spec-00-invariants.md)
+- [Canonical paper source (v3.1 markdown)](paper/slipstream-v3.1.md)
 - [A2A extension](../extensions/a2a-slipstream/v1/README.md)

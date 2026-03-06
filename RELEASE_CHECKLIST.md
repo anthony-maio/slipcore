@@ -2,22 +2,22 @@
 
 ## 1. Pre-Release Quality Gate
 
-- [ ] `PYTHONPATH=src ruff check src/`
-- [ ] `PYTHONPATH=src mypy src/slipcore/`
-- [ ] `PYTHONPATH=src pytest tests -v --tb=short`
-- [ ] Version updated in `pyproject.toml` and `src/slipcore/__init__.py`
-- [ ] `CHANGELOG.md` updated
+- [x] `PYTHONPATH=src ruff check src/`
+- [x] `PYTHONPATH=src mypy src/slipcore/`
+- [x] `PYTHONPATH=src pytest tests -v --tb=short`
+- [x] Version updated in `pyproject.toml` and `src/slipcore/__init__.py`
+- [x] `CHANGELOG.md` updated
 
 ## 2. Conformance / Migration Gate
 
-- [ ] Conformance vectors updated for normative changes (`spec/conformance/*.jsonl`)
-- [ ] Fallback strict behavior verified (`Fallback` requires 1-16 char ref)
-- [ ] Legacy migration path validated (`parse_slip_legacy`)
+- [x] Conformance vectors updated for normative changes (`spec/conformance/*.jsonl`)
+- [x] Fallback strict behavior verified (`Fallback` requires 1-16 char ref)
+- [x] Legacy migration path validated (`parse_slip_legacy`)
 
 ## 3. Paper / Spec / Code Sync Gate
 
 - [x] Spec updated (`spec/spec-00-invariants.md` and related docs)
-- [x] Paper updated (`private/zenodo/slipstream-paper-v3.tex`)
+- [x] Paper updated (`docs/paper/slipstream-v3.1.md`)
 - [x] Claim map updated (`docs/claim-map.md`)
 - [x] Examples in paper/spec/docs match shipped behavior and versioning
 
@@ -38,7 +38,7 @@ python -m build
 python -m twine check dist/*
 ```
 
-- [ ] Install from wheel in a clean venv and run smoke import
+- [x] Install from wheel in a clean venv and run smoke import
 
 ```bash
 python -m venv .venv-smoke
@@ -58,9 +58,9 @@ gh release create "v${VERSION}" --title "Slipstream v${VERSION}" --notes "See CH
 
 ## 7. Model and Dataset Consistency
 
-- [ ] `MODEL_CARD.md` aligned with v3 Force+Object wire format
-- [ ] `data/README.md`, `data/DATASHEET.md`, `data/dataset-metadata.json`, `data/.zenodo.json` aligned
-- [ ] Hugging Face namespace links resolve (`anthonym21/...`)
+- [x] `MODEL_CARD.md` aligned with v3 Force+Object wire format
+- [x] `data/README.md`, `data/DATASHEET.md`, `data/dataset-metadata.json`, `data/.zenodo.json` aligned
+- [x] Hugging Face namespace links resolve (`anthonym21/...`)
 
 ## 8. Publish Targets
 
