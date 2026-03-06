@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from slipcore.errors import UCRError
 from slipcore.events import ExtensionProposed, clear_sinks, register_sink
 from slipcore.extensions import ExtensionManager, FallbackEvent, FallbackTracker
 from slipcore.ucr import CORE_RANGE_END, AnchorState, UCR, UCRAuthority, create_base_ucr
@@ -311,12 +312,12 @@ class TestExtensionManager:
     def test_add_extension_returns_anchor(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
         )
-        assert anchor.force == "Deploy"
+        assert anchor.force == "Request"
         assert anchor.obj == "Container"
         assert anchor.canonical == "Deploy container image"
         assert anchor.coords == (3, 5, 0, 4)
@@ -324,7 +325,7 @@ class TestExtensionManager:
     def test_add_extension_in_extension_range(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
@@ -334,7 +335,7 @@ class TestExtensionManager:
     def test_add_extension_not_core(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
@@ -344,7 +345,7 @@ class TestExtensionManager:
     def test_add_extension_state_is_draft(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
@@ -354,7 +355,7 @@ class TestExtensionManager:
     def test_add_extension_default_created_by(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
@@ -364,7 +365,7 @@ class TestExtensionManager:
     def test_add_extension_custom_created_by(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
@@ -375,35 +376,45 @@ class TestExtensionManager:
     def test_add_extension_registers_in_ucr(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
         )
-        found = mgr.ucr.get_by_force_obj("Deploy", "Container")
+        found = mgr.ucr.get_by_force_obj("Request", "Container")
         assert found is not None
         assert found.index == anchor.index
 
     def test_add_extension_lookup_by_index(self):
         mgr = ExtensionManager()
         anchor = mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
         )
         found = mgr.ucr.get_by_index(anchor.index)
         assert found is not None
-        assert found.force == "Deploy"
+        assert found.force == "Request"
+
+    def test_add_extension_rejects_unknown_force(self):
+        mgr = ExtensionManager()
+        with pytest.raises(UCRError, match="Unknown force for extension"):
+            mgr.add_extension(
+                force="Deploy",
+                obj="Container",
+                canonical="bad",
+                coords=(3, 5, 0, 4),
+            )
 
     def test_add_multiple_extensions_increment_index(self):
         mgr = ExtensionManager()
         a1 = mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="Deploy container", coords=(3, 5, 0, 4),
         )
         a2 = mgr.add_extension(
-            force="Scale", obj="Service",
+            force="Request", obj="Service",
             canonical="Scale service instances", coords=(3, 5, 5, 4),
         )
         assert a2.index == a1.index + 1
@@ -417,7 +428,7 @@ class TestExtensionManager:
         register_sink(captured.append)
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy container image",
             coords=(3, 5, 0, 4),
@@ -426,7 +437,7 @@ class TestExtensionManager:
         assert len(captured) == 1
         event = captured[0]
         assert isinstance(event, ExtensionProposed)
-        assert event.force == "Deploy"
+        assert event.force == "Request"
         assert event.obj == "Container"
         assert event.created_by == "tester"
         assert event.event_type == "extension.proposed"
@@ -436,23 +447,23 @@ class TestExtensionManager:
         register_sink(captured.append)
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="c1", coords=(3, 5, 0, 4),
         )
         mgr.add_extension(
-            force="Scale", obj="Service",
+            force="Request", obj="Service",
             canonical="c2", coords=(3, 5, 5, 4),
         )
         assert len(captured) == 2
-        assert captured[0].force == "Deploy"
-        assert captured[1].force == "Scale"
+        assert captured[0].force == "Request"
+        assert captured[1].force == "Request"
 
     def test_add_extension_event_has_timestamp(self):
         captured = []
         register_sink(captured.append)
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="c1", coords=(3, 5, 0, 4),
         )
         assert captured[0].timestamp > 0
@@ -597,7 +608,7 @@ class TestExtensionManager:
     def test_export_extensions_includes_added_extensions(self, tmp_path):
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="Deploy container image", coords=(3, 5, 0, 4),
             created_by="test-agent",
         )
@@ -606,7 +617,7 @@ class TestExtensionManager:
         data = json.loads(out.read_text(encoding="utf-8"))
         assert len(data["extensions"]) == 1
         ext = data["extensions"][0]
-        assert ext["force"] == "Deploy"
+        assert ext["force"] == "Request"
         assert ext["obj"] == "Container"
         assert ext["canonical"] == "Deploy container image"
         assert ext["coords"] == [3, 5, 0, 4]
@@ -628,11 +639,11 @@ class TestExtensionManager:
     def test_export_extensions_multiple_anchors(self, tmp_path):
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="c1", coords=(3, 5, 0, 4),
         )
         mgr.add_extension(
-            force="Scale", obj="Service",
+            force="Request", obj="Service",
             canonical="c2", coords=(3, 5, 5, 4),
         )
         out = tmp_path / "extensions.json"
@@ -654,7 +665,7 @@ class TestExtensionManager:
         out = tmp_path / "extensions.json"
         out.write_text("{}", encoding="utf-8")
         mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="c1", coords=(3, 5, 0, 4),
         )
         mgr.export_extensions(out)
@@ -684,7 +695,7 @@ class TestExtensionManager:
     def test_get_stats_extension_count_after_add(self):
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="c1", coords=(3, 5, 0, 4),
         )
         stats = mgr.get_stats()
@@ -708,11 +719,11 @@ class TestExtensionManager:
     def test_get_stats_combined(self):
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Deploy", obj="Container",
+            force="Request", obj="Container",
             canonical="c1", coords=(3, 5, 0, 4),
         )
         mgr.add_extension(
-            force="Scale", obj="Service",
+            force="Request", obj="Service",
             canonical="c2", coords=(3, 5, 5, 4),
         )
         for _ in range(3):
@@ -729,8 +740,8 @@ class TestExtensionManager:
         ucr = UCR(authority=UCRAuthority(authority_id="empty", ucr_version="3.0.0"))
         mgr = ExtensionManager(ucr=ucr)
         anchor = mgr.add_extension(
-            force="Custom", obj="Action",
-            canonical="Custom action", coords=(0, 0, 0, 0),
+            force="Meta", obj="Action",
+            canonical="Custom action", coords=(7, 4, 7, 4),
         )
         assert anchor.index == CORE_RANGE_END  # First extension starts at 0x8000
         stats = mgr.get_stats()
@@ -748,8 +759,8 @@ class TestExtensionManager:
         register_sink(captured.append)
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Test", obj="Isolation",
-            canonical="test", coords=(0, 0, 0, 0),
+            force="Meta", obj="Isolation",
+            canonical="test", coords=(7, 4, 7, 4),
         )
         assert len(captured) == 1
 
@@ -759,8 +770,8 @@ class TestExtensionManager:
         register_sink(captured.append)
         mgr = ExtensionManager()
         mgr.add_extension(
-            force="Test", obj="Isolation2",
-            canonical="test2", coords=(1, 1, 1, 1),
+            force="Meta", obj="Isolation2",
+            canonical="test2", coords=(7, 4, 7, 5),
         )
         # Should be exactly 1, not 2 (which would indicate the previous
         # test's sink leaked)

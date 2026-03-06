@@ -32,7 +32,7 @@
       "scheme": "url"
     },
     {
-      "identifier": "https://huggingface.co/datasets/anthony-maio/slipstream-tqt",
+      "identifier": "https://huggingface.co/datasets/anthonym21/slipstream-tqt",
       "relation": "isIdenticalTo",
       "resource_type": "dataset",
       "scheme": "url"

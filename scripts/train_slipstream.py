@@ -310,7 +310,7 @@ def main():
                         help="LoRA alpha")
 
     # Training args
-    parser.add_argument("--data", type=str, default="./data/slipstream_train_combined.jsonl",
+    parser.add_argument("--data", type=str, default="./data/slipstream-tqt-v3.jsonl",
                         help="Path to training data")
     parser.add_argument("--output", type=str, default="./output",
                         help="Output directory")

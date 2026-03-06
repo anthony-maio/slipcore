@@ -9,16 +9,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from enum import Enum, unique
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
 from .errors import UCRError
+from .intent import FORCE_VALUES
 
 CORE_RANGE_END = 0x8000
 LEVELS_PER_DIM = 8
 Coords = tuple[int, int, int, int]
+_TOKEN_RE = re.compile(r"^[A-Za-z0-9]+$")
 
 
 @unique
@@ -68,7 +71,7 @@ class UCRAnchor:
             force=d["force"],
             obj=d["obj"],
             canonical=d["canonical"],
-            coords=tuple(d["coords"]),  # type: ignore[arg-type]
+            coords=tuple(d["coords"]),
             is_core=d.get("is_core", True),
             state=AnchorState(d.get("state", "active")),
             created_by=d.get("created_by", "core"),
@@ -94,9 +97,11 @@ class UCRAuthority:
 class UCR:
     authority: UCRAuthority
     anchors: dict[int, UCRAnchor] = field(default_factory=dict)
+    allow_core_mutation: bool = False
     _force_obj_index: dict[tuple[str, str], int] = field(default_factory=dict, repr=False)
 
     def add_anchor(self, anchor: UCRAnchor) -> None:
+        self._validate_anchor(anchor)
         if anchor.index in self.anchors:
             raise UCRError(f"Index {anchor.index:#06x} exists")
         key = (anchor.force, anchor.obj)
@@ -155,6 +160,10 @@ class UCR:
         coords: Coords,
         created_by: str = "swarm",
     ) -> UCRAnchor:
+        if force not in FORCE_VALUES:
+            raise UCRError(f"Unknown force for extension: {force!r}")
+        if not _TOKEN_RE.match(obj):
+            raise UCRError(f"Object token invalid for extension: {obj!r}")
         anchor = UCRAnchor(
             index=self.next_extension_index(),
             force=force,
@@ -190,9 +199,10 @@ class UCR:
         with open(path) as f:
             data = json.load(f)
         authority = UCRAuthority(**data["authority"])
-        ucr = cls(authority=authority)
+        ucr = cls(authority=authority, allow_core_mutation=True)
         for ad in data["anchors"]:
             ucr.add_anchor(UCRAnchor.from_dict(ad))
+        ucr.allow_core_mutation = False
         return ucr
 
     def __len__(self) -> int:
@@ -201,10 +211,32 @@ class UCR:
     def __iter__(self) -> Iterator[UCRAnchor]:
         return iter(self.anchors.values())
 
+    def _validate_anchor(self, anchor: UCRAnchor) -> None:
+        if anchor.force not in FORCE_VALUES:
+            raise UCRError(f"Unknown force: {anchor.force!r}")
+        if not _TOKEN_RE.match(anchor.obj):
+            raise UCRError(f"Object token invalid: {anchor.obj!r}")
+        if not (0 <= anchor.index <= 0xFFFF):
+            raise UCRError(f"Anchor index out of range: {anchor.index:#06x}")
+        if len(anchor.coords) != 4 or any(c < 0 or c >= LEVELS_PER_DIM for c in anchor.coords):
+            raise UCRError(f"Anchor coords out of range: {anchor.coords!r}")
+
+        if anchor.index < CORE_RANGE_END:
+            if not anchor.is_core:
+                raise UCRError("Core-range anchors must be marked is_core=True")
+            if not self.allow_core_mutation:
+                raise UCRError("Core anchor mutation is locked")
+        else:
+            if anchor.is_core:
+                raise UCRError("Extension-range anchors must be marked is_core=False")
+
 
 def create_base_ucr(authority_id: str = "slipcore-default") -> UCR:
     """Create the base UCR with core Force-Object anchors."""
-    ucr = UCR(authority=UCRAuthority(authority_id=authority_id, ucr_version="3.0.0"))
+    ucr = UCR(
+        authority=UCRAuthority(authority_id=authority_id, ucr_version="3.0.0"),
+        allow_core_mutation=True,
+    )
 
     core = [
         (0x0001, "Observe", "State", "Report current state", (0, 4, 2, 3)),
@@ -259,5 +291,6 @@ def create_base_ucr(authority_id: str = "slipcore-default") -> UCR:
             UCRAnchor(index=index, force=force, obj=obj, canonical=canonical, coords=coords)
         )
 
+    ucr.allow_core_mutation = False
     ucr.authority.ucr_hash = ucr.content_hash()
     return ucr

@@ -94,18 +94,6 @@ class TestValidVectors:
         assert msg.fallback_ref == expected["fallback_ref"]
 
 
-# Vectors whose declared error type does not match the current implementation.
-# These are documented inconsistencies between the conformance data and the
-# parser: the parser raises a different (but still valid) error class.
-_XFAIL_WIRES: dict[str, str] = {
-    "SLIP v3 a b c d": (
-        "Conformance data declares WireParseError (too few tokens) but "
-        "the wire has 6 tokens; parse_slip validates force first and raises "
-        "WireValidationError for the unknown force 'c'."
-    ),
-}
-
-
 @pytest.mark.conformance
 class TestInvalidVectors:
     """Verify that malformed wire messages raise the documented error type."""
@@ -119,9 +107,6 @@ class TestInvalidVectors:
         wire = vector["wire"]
         expected_error_name = vector["error"]
         expected_error_type = _ERROR_TYPES[expected_error_name]
-
-        if wire in _XFAIL_WIRES:
-            pytest.xfail(_XFAIL_WIRES[wire])
 
         with pytest.raises(expected_error_type):
             parse_slip(wire)

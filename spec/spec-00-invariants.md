@@ -19,7 +19,7 @@ Conformance test vectors in `conformance/` verify these rules.
 
 5. **MUST use agent IDs of 1-20 characters**: Both `<src>` and `<dst>` MUST be 1 to 20 alphanumeric characters.
 
-6. **MUST use pointer reference for Fallback**: When `<force>` is `Fallback`, the payload MUST contain a reference token (e.g., `ref7f3a`). Raw natural language text MUST NOT appear on the wire.
+6. **MUST use pointer reference for Fallback**: When `<force>` is `Fallback`, the payload MUST contain a reference token (e.g., `ref7f3a`) of 1-16 alphanumeric characters. Raw natural language text MUST NOT appear on the wire.
 
 7. **MUST keep payload tokens under 30 characters each**: Each payload token MUST be at most 30 alphanumeric characters.
 

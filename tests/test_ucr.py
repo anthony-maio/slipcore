@@ -219,20 +219,35 @@ class TestUCR:
         """Adding a new anchor succeeds and is retrievable."""
         ucr = UCR(authority=authority)
         anchor = UCRAnchor(
-            index=1, force="F", obj="O", canonical="c", coords=(0, 0, 0, 0)
+            index=CORE_RANGE_END,
+            force="Request",
+            obj="CustomTask",
+            canonical="c",
+            coords=(3, 4, 0, 0),
+            is_core=False,
         )
         ucr.add_anchor(anchor)
         assert len(ucr) == 1
-        assert ucr.get_by_index(1) is anchor
+        assert ucr.get_by_index(CORE_RANGE_END) is anchor
 
     def test_add_anchor_duplicate_index(self, authority: UCRAuthority) -> None:
         """Adding anchor with duplicate index raises UCRError."""
         ucr = UCR(authority=authority)
         a1 = UCRAnchor(
-            index=1, force="F1", obj="O1", canonical="c1", coords=(0, 0, 0, 0)
+            index=CORE_RANGE_END,
+            force="Request",
+            obj="ObjOne",
+            canonical="c1",
+            coords=(3, 4, 0, 0),
+            is_core=False,
         )
         a2 = UCRAnchor(
-            index=1, force="F2", obj="O2", canonical="c2", coords=(1, 1, 1, 1)
+            index=CORE_RANGE_END,
+            force="Inform",
+            obj="ObjTwo",
+            canonical="c2",
+            coords=(1, 4, 0, 1),
+            is_core=False,
         )
         ucr.add_anchor(a1)
         with pytest.raises(UCRError, match="exists"):
@@ -242,14 +257,50 @@ class TestUCR:
         """Adding anchor with duplicate force/obj pair raises UCRError."""
         ucr = UCR(authority=authority)
         a1 = UCRAnchor(
-            index=1, force="F", obj="O", canonical="c1", coords=(0, 0, 0, 0)
+            index=CORE_RANGE_END,
+            force="Request",
+            obj="Obj",
+            canonical="c1",
+            coords=(3, 4, 0, 0),
+            is_core=False,
         )
         a2 = UCRAnchor(
-            index=2, force="F", obj="O", canonical="c2", coords=(1, 1, 1, 1)
+            index=CORE_RANGE_END + 1,
+            force="Request",
+            obj="Obj",
+            canonical="c2",
+            coords=(3, 4, 0, 1),
+            is_core=False,
         )
         ucr.add_anchor(a1)
         with pytest.raises(UCRError, match="exists"):
             ucr.add_anchor(a2)
+
+    def test_add_anchor_rejects_unknown_force(self, authority: UCRAuthority) -> None:
+        ucr = UCR(authority=authority)
+        with pytest.raises(UCRError, match="Unknown force"):
+            ucr.add_anchor(
+                UCRAnchor(
+                    index=CORE_RANGE_END,
+                    force="Deploy",
+                    obj="Task",
+                    canonical="bad force",
+                    coords=(3, 4, 0, 4),
+                    is_core=False,
+                )
+            )
+
+    def test_add_anchor_rejects_core_range_mutation(self, base_ucr: UCR) -> None:
+        with pytest.raises(UCRError, match="Core anchor mutation is locked"):
+            base_ucr.add_anchor(
+                UCRAnchor(
+                    index=0x0015,
+                    force="Inform",
+                    obj="NewStatus",
+                    canonical="new status",
+                    coords=(1, 4, 0, 3),
+                )
+            )
 
     # -- get_by_index --------------------------------------------------------
 
@@ -303,26 +354,28 @@ class TestUCR:
         """find_nearest ignores deprecated anchors."""
         ucr = UCR(authority=authority)
         deprecated = UCRAnchor(
-            index=1,
-            force="Old",
+            index=CORE_RANGE_END,
+            force="Request",
             obj="Thing",
             canonical="old",
-            coords=(0, 0, 0, 0),
+            coords=(3, 4, 0, 0),
+            is_core=False,
             state=AnchorState.DEPRECATED,
         )
         active = UCRAnchor(
-            index=2,
-            force="New",
+            index=CORE_RANGE_END + 1,
+            force="Inform",
             obj="Thing",
             canonical="new",
-            coords=(7, 7, 7, 7),
+            coords=(1, 4, 0, 1),
+            is_core=False,
         )
         ucr.add_anchor(deprecated)
         ucr.add_anchor(active)
         # Even though (0,0,0,0) is exact match for deprecated, it should
         # return the active anchor instead.
-        result = ucr.find_nearest((0, 0, 0, 0))
-        assert result.force == "New"
+        result = ucr.find_nearest((3, 4, 0, 0))
+        assert result.force == "Inform"
 
     def test_find_nearest_manhattan_distance(
         self, authority: UCRAuthority
@@ -330,16 +383,26 @@ class TestUCR:
         """find_nearest uses Manhattan (L1) distance, not Euclidean."""
         ucr = UCR(authority=authority)
         a = UCRAnchor(
-            index=1, force="A", obj="A", canonical="a", coords=(0, 0, 0, 0)
+            index=CORE_RANGE_END,
+            force="Observe",
+            obj="A",
+            canonical="a",
+            coords=(0, 0, 0, 0),
+            is_core=False,
         )
         b = UCRAnchor(
-            index=2, force="B", obj="B", canonical="b", coords=(1, 1, 1, 1)
+            index=CORE_RANGE_END + 1,
+            force="Inform",
+            obj="B",
+            canonical="b",
+            coords=(1, 1, 1, 1),
+            is_core=False,
         )
         ucr.add_anchor(a)
         ucr.add_anchor(b)
         # Manhattan distance to (0,0,0,1): A=1, B=3 -> A wins
         result = ucr.find_nearest((0, 0, 0, 1))
-        assert result.force == "A"
+        assert result.force == "Observe"
 
     # -- next_extension_index ------------------------------------------------
 
@@ -354,10 +417,10 @@ class TestUCR:
     ) -> None:
         """After adding extension, next index increments."""
         base_ucr.propose_extension(
-            force="Ext",
+            force="Request",
             obj="First",
             canonical="first extension",
-            coords=(0, 0, 0, 0),
+            coords=(3, 4, 0, 0),
         )
         assert base_ucr.next_extension_index() == CORE_RANGE_END + 1
 
@@ -367,10 +430,10 @@ class TestUCR:
         """propose_extension creates a DRAFT, non-core anchor."""
         before_len = len(base_ucr)
         ext = base_ucr.propose_extension(
-            force="Deploy",
+            force="Request",
             obj="Container",
             canonical="Deploy a container",
-            coords=(5, 6, 5, 4),
+            coords=(3, 4, 5, 4),
             created_by="devops-agent",
         )
         assert ext.is_core is False
@@ -379,7 +442,16 @@ class TestUCR:
         assert ext.index >= CORE_RANGE_END
         assert len(base_ucr) == before_len + 1
         # Retrievable by force/obj
-        assert base_ucr.get_by_force_obj("Deploy", "Container") is ext
+        assert base_ucr.get_by_force_obj("Request", "Container") is ext
+
+    def test_propose_extension_rejects_unknown_force(self, base_ucr: UCR) -> None:
+        with pytest.raises(UCRError, match="Unknown force for extension"):
+            base_ucr.propose_extension(
+                force="Deploy",
+                obj="Container",
+                canonical="bad",
+                coords=(3, 4, 5, 4),
+            )
 
     # -- content_hash --------------------------------------------------------
 
@@ -401,7 +473,7 @@ class TestUCR:
         """Adding an anchor changes the content hash."""
         h_before = base_ucr.content_hash()
         base_ucr.propose_extension(
-            force="New", obj="Anchor", canonical="new", coords=(0, 0, 0, 0)
+            force="Request", obj="Anchor", canonical="new", coords=(3, 4, 0, 0)
         )
         h_after = base_ucr.content_hash()
         assert h_before != h_after
@@ -440,17 +512,17 @@ class TestUCR:
     ) -> None:
         """Extensions survive save/load roundtrip."""
         base_ucr.propose_extension(
-            force="Custom",
+            force="Request",
             obj="Widget",
             canonical="custom widget",
-            coords=(1, 2, 3, 4),
+            coords=(3, 4, 3, 4),
             created_by="test-agent",
         )
         filepath = tmp_path / "ucr_ext.json"
         base_ucr.save(filepath)
         loaded = UCR.load(filepath)
 
-        ext = loaded.get_by_force_obj("Custom", "Widget")
+        ext = loaded.get_by_force_obj("Request", "Widget")
         assert ext is not None
         assert ext.is_core is False
         assert ext.state is AnchorState.DRAFT
