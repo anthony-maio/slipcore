@@ -1,8 +1,8 @@
 {
   "title": "Slipstream Think-Quantize-Transmit Dataset",
   "id": "anthonym21/slipstream-tqt",
-  "subtitle": "Training data for 82% token reduction in multi-agent AI communication",
-  "description": "This dataset trains LLMs to use the Slipstream protocol - a semantic quantization system for efficient multi-agent coordination. Models learn the Think-Quantize-Transmit (TQT) cognitive pattern: reason about intent, map to semantic anchors, and output compact wire-format messages. Achieves 82% token reduction compared to JSON messaging.",
+  "subtitle": "Slipstream v3 Force+Object training data",
+  "description": "Training dataset for Slipstream v3 semantic quantization. Records teach the Think-Quantize-Transmit pattern and emit `SLIP v3 <src> <dst> <Force> <Object> [payload...]` messages.",
   "isPrivate": false,
   "licenses": [
     {
@@ -11,22 +11,18 @@
   ],
   "keywords": [
     "multi-agent systems",
-    "llm finetuning",
-    "agent communication",
     "semantic quantization",
+    "agent communication",
     "token efficiency",
-    "agentic ai",
-    "nlp",
-    "transformers",
     "instruction tuning",
-    "sharegpt format"
+    "sharegpt"
   ],
   "collaborators": [],
   "data": [
     {
-      "description": "Training dataset in ShareGPT JSONL format",
-      "name": "slipstream_train_combined.jsonl",
-      "totalBytes": 4200000,
+      "description": "Primary v3 training dataset in ShareGPT JSONL format",
+      "name": "slipstream-tqt-v3.jsonl",
+      "totalBytes": 0,
       "columns": []
     }
   ],

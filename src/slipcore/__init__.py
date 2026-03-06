@@ -12,7 +12,7 @@ Usage:
     '[planner -> exec] Request Plan: "Request plan creation"'
 """
 
-__version__ = "3.1.0"
+__version__ = "4.0.0"
 
 from .errors import (
     AnchorNotFoundError,
@@ -67,6 +67,7 @@ from .wire import (
     format_fallback,
     format_slip,
     parse_slip,
+    parse_slip_legacy,
     validate_wire,
 )
 
@@ -77,6 +78,7 @@ __all__ = [
     "format_slip",
     "format_fallback",
     "parse_slip",
+    "parse_slip_legacy",
     "validate_wire",
     "WIRE_VERSION",
     # Intent

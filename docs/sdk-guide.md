@@ -12,7 +12,7 @@ SLIP:   SLIP v3 alice bob Request Review auth
 
 The v3 wire format uses a factorized intent model. Instead of 46 flat CamelCase mnemonics (`RequestReview`), intents split into a Force token (12 closed action verbs) and an Object token (31+ extensible domain nouns): `Request` + `Review`.
 
-This guide covers the `slipcore` Python SDK (v3.0.0).
+This guide covers the `slipcore` Python SDK (v4.0.0).
 
 ---
 
@@ -48,9 +48,8 @@ Requires Python 3.10 or later. The core package has zero dependencies -- it uses
 |-------|----------------|--------------|
 | `ml` | `pip install slipcore[ml]` | numpy, sentence-transformers, scikit-learn |
 | `a2a` | `pip install slipcore[a2a]` | httpx for A2A protocol integration |
-| `tools` | `pip install slipcore[tools]` | click, rich, tiktoken + ML deps |
 | `dev` | `pip install slipcore[dev]` | pytest, mypy, ruff, hypothesis + all above |
-| `all` | `pip install slipcore[all]` | ml + a2a + tools |
+| `all` | `pip install slipcore[all]` | ml + a2a |
 
 For development from source:
 
@@ -218,7 +217,7 @@ except WireParseError as e:
     print(e.raw)  # "not a slip message"
 ```
 
-For fallback messages, the first payload token is extracted into `fallback_ref`:
+For fallback messages, the first payload token is extracted into `fallback_ref`. In `slipcore 4.0.0`, fallback messages without a ref are invalid and raise `WireValidationError`:
 
 ```python
 msg = parse_slip("SLIP v3 qa planner Fallback Generic ref7f3a")
@@ -1070,6 +1069,18 @@ def convert_v2_wire(v2_wire: str) -> str:
 # Example
 v3_wire = convert_v2_wire("SLIP v1 alice bob RequestReview auth")
 print(v3_wire)  # "SLIP v3 alice bob Request Review auth"
+```
+
+### Migrating permissive fallback wires (v4.0+)
+
+`slipcore 4.0.0` enforces fallback refs strictly. For old logs that emitted
+`SLIP v3 ... Fallback Generic` without a ref token, use the explicit legacy parser:
+
+```python
+from slipcore import parse_slip_legacy
+
+msg = parse_slip_legacy("SLIP v3 qa planner Fallback Generic")
+print(msg.fallback_ref)  # "reflegacy"
 ```
 
 ---

@@ -3,6 +3,24 @@
 All notable changes to slipcore are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.0.0] - 2026-03-06
+
+### Changed
+- Enforced strict fallback parsing: `Fallback` wires now require a 1-16 char ref token
+- Enforced closed Force vocabulary for UCR extensions
+- Locked core UCR anchor mutation after base UCR construction/load
+- Updated package metadata and docs for Python-first adoption flow
+
+### Added
+- Explicit legacy migration helper: `parse_slip_legacy()` for permissive fallback wire migration
+- Governance package: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `GOVERNANCE.md`, `MAINTAINERS.md`, `CODEOWNERS`, and PR/issue templates
+- Paper/spec/code release parity artifact: `docs/claim-map.md`
+- New adoption docs: `docs/start-here.md` and `docs/migration-v4.md`
+
+### Fixed
+- README quickstart used invalid `KeywordQuantizer.quantize(..., src=..., dst=...)` usage
+- Model/dataset metadata and links now consistently target the `anthonym21` Hugging Face namespace
+
 ## [3.1.0] - 2026-02-26
 
 ### Changed
@@ -56,6 +74,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - UCR manifold with 4D coordinate system
 - Template-based finetuning dataset generator
 
+[4.0.0]: https://github.com/anthony-maio/slipcore/compare/v3.1.0...v4.0.0
 [3.1.0]: https://github.com/anthony-maio/slipcore/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/anthony-maio/slipcore/compare/v2.4.0...v3.0.0
 [2.4.0]: https://github.com/anthony-maio/slipcore/compare/v2.0.0...v2.4.0

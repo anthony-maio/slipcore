@@ -53,7 +53,7 @@ class FallbackTracker:
     def get_top_patterns(self, n: int = 20) -> list[tuple[str, int]]:
         return self._pattern_counts.most_common(n)
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, object]:
         return {
             "total_events": len(self.events),
             "unique_patterns": len(self._pattern_counts),
@@ -131,7 +131,7 @@ class ExtensionManager:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, object]:
         return {
             "core_anchors": len(self.ucr.core_anchors()),
             "extension_anchors": len(self.ucr.extension_anchors()),

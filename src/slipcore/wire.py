@@ -26,6 +26,7 @@ WIRE_PREFIX = "SLIP"
 MAX_AGENT_ID_LEN = 20
 MAX_PAYLOAD_TOKEN_LEN = 30
 MAX_PAYLOAD_TOKENS = 20
+MAX_FALLBACK_REF_LEN = 16
 
 _SAFE_TOKEN_RE = re.compile(r"^[A-Za-z0-9]+$")
 _AGENT_ID_RE = re.compile(r"^[A-Za-z0-9]{1,20}$")
@@ -79,6 +80,11 @@ def format_slip(
     _validate_force(force)
     _validate_object(obj)
 
+    if force == "Fallback":
+        if not payload:
+            raise WireValidationError("Fallback messages require a ref token")
+        _validate_fallback_ref(payload[0])
+
     parts = [WIRE_PREFIX, WIRE_VERSION, src, dst, force, obj]
 
     if payload:
@@ -100,8 +106,7 @@ def format_fallback(src: str, dst: str, ref: str) -> str:
     """
     _validate_agent_id(src, "src")
     _validate_agent_id(dst, "dst")
-    if not _SAFE_TOKEN_RE.match(ref) or len(ref) > 16:
-        raise WireValidationError(f"Invalid fallback ref: {ref!r}")
+    _validate_fallback_ref(ref)
     return " ".join([WIRE_PREFIX, WIRE_VERSION, src, dst, "Fallback", "Generic", ref])
 
 
@@ -140,8 +145,11 @@ def parse_slip(raw: str) -> SlipMessage:
         )
 
     fallback_ref: Optional[str] = None
-    if force == "Fallback" and payload:
+    if force == "Fallback":
+        if not payload:
+            raise WireValidationError("Fallback messages require a ref token")
         fallback_ref = payload[0]
+        _validate_fallback_ref(fallback_ref)
         payload = list(payload[1:])
     else:
         payload = list(payload)
@@ -193,7 +201,37 @@ def validate_wire(raw: str) -> list[str]:
     if len(payload_tokens) > MAX_PAYLOAD_TOKENS:
         issues.append(f"Too many payload tokens: {len(payload_tokens)} > {MAX_PAYLOAD_TOKENS}")
 
+    if force == "Fallback":
+        if not payload_tokens:
+            issues.append("Fallback requires a ref token")
+        else:
+            ref = payload_tokens[0]
+            if len(ref) > MAX_FALLBACK_REF_LEN:
+                issues.append(f"Fallback ref too long: {len(ref)} > {MAX_FALLBACK_REF_LEN}")
+
     return issues
+
+
+def parse_slip_legacy(raw: str, default_fallback_ref: str = "reflegacy") -> SlipMessage:
+    """Parse SLIP wire and repair known legacy fallback wires.
+
+    Legacy v3 messages that omit the fallback ref can be parsed by
+    supplying a deterministic default ref token.
+    """
+    try:
+        return parse_slip(raw)
+    except WireValidationError:
+        tokens = raw.strip().split()
+        is_legacy_fallback = (
+            len(tokens) == 6
+            and tokens[:2] == [WIRE_PREFIX, WIRE_VERSION]
+            and tokens[4] == "Fallback"
+        )
+        if is_legacy_fallback:
+            _validate_fallback_ref(default_fallback_ref)
+            repaired = " ".join(tokens + [default_fallback_ref])
+            return parse_slip(repaired)
+        raise
 
 
 def _validate_agent_id(agent_id: str, field_name: str) -> None:
@@ -216,3 +254,8 @@ def _validate_payload_token(token: str, index: int) -> None:
         raise WireValidationError(f"Payload[{index}] not alphanumeric: {token!r}")
     if len(token) > MAX_PAYLOAD_TOKEN_LEN:
         raise WireValidationError(f"Payload[{index}] too long: {len(token)}")
+
+
+def _validate_fallback_ref(ref: str) -> None:
+    if not _SAFE_TOKEN_RE.match(ref) or len(ref) > MAX_FALLBACK_REF_LEN:
+        raise WireValidationError(f"Invalid fallback ref: {ref!r}")

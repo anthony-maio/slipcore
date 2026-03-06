@@ -1,102 +1,70 @@
 # Slipstream Release Checklist
 
-## Pre-Release
+## 1. Pre-Release Quality Gate
 
-### 1. Code Quality
-- [ ] Run linter: `ruff check src/`
-- [ ] Run type checker: `mypy src/slipcore/`
-- [ ] Run full test suite: `pytest tests/ -v`
-- [ ] Verify version is updated in `pyproject.toml` and `src/slipcore/__init__.py`
-- [ ] Update CHANGELOG.md
+- [ ] `PYTHONPATH=src ruff check src/`
+- [ ] `PYTHONPATH=src mypy src/slipcore/`
+- [ ] `PYTHONPATH=src pytest tests -v --tb=short`
+- [ ] Version updated in `pyproject.toml` and `src/slipcore/__init__.py`
+- [ ] `CHANGELOG.md` updated
 
-### 2. Smoke Test
-```bash
-python -c "
-from slipcore import format_slip, parse_slip, render_human, __version__
-wire = format_slip('a', 'b', 'Request', 'Review')
-msg = parse_slip(wire)
-assert msg.force == 'Request' and msg.obj == 'Review'
-print(f'slipcore {__version__} OK: {wire}')
-"
-```
+## 2. Conformance / Migration Gate
 
-### 3. Build
+- [ ] Conformance vectors updated for normative changes (`spec/conformance/*.jsonl`)
+- [ ] Fallback strict behavior verified (`Fallback` requires 1-16 char ref)
+- [ ] Legacy migration path validated (`parse_slip_legacy`)
+
+## 3. Paper / Spec / Code Sync Gate
+
+- [x] Spec updated (`spec/spec-00-invariants.md` and related docs)
+- [x] Paper updated (`private/zenodo/slipstream-paper-v3.tex`)
+- [x] Claim map updated (`docs/claim-map.md`)
+- [x] Examples in paper/spec/docs match shipped behavior and versioning
+
+## 4. Governance Gate
+
+- [x] `CONTRIBUTING.md`
+- [x] `CODE_OF_CONDUCT.md`
+- [x] `SECURITY.md`
+- [x] `GOVERNANCE.md`
+- [x] `MAINTAINERS.md`
+- [x] `CODEOWNERS`
+- [x] Issue and PR templates present in `.github/`
+
+## 5. Build and Install Gate
+
 ```bash
 python -m build
-twine check dist/*
+python -m twine check dist/*
 ```
 
----
+- [ ] Install from wheel in a clean venv and run smoke import
 
-## GitHub Release
-
-### 4. Tag and Release
 ```bash
-# Tag the release (use version from pyproject.toml)
+python -m venv .venv-smoke
+source .venv-smoke/bin/activate  # Windows: .venv-smoke\Scripts\activate
+pip install dist/slipcore-<version>-py3-none-any.whl
+python -c "from slipcore import format_slip, parse_slip; print(parse_slip(format_slip('a','b','Request','Task')).wire)"
+```
+
+## 6. GitHub Release
+
+```bash
 VERSION=$(python -c "import slipcore; print(slipcore.__version__)")
 git tag -a "v${VERSION}" -m "Slipstream v${VERSION}"
 git push origin "v${VERSION}"
-
-# Create release on GitHub
 gh release create "v${VERSION}" --title "Slipstream v${VERSION}" --notes "See CHANGELOG.md"
 ```
 
-### 5. CI/CD Auto-Publish
-The GitHub Action (`.github/workflows/publish.yml`) auto-publishes to PyPI on release.
+## 7. Model and Dataset Consistency
 
-**First-time setup required:**
-1. Go to https://pypi.org/manage/project/slipcore/settings/publishing/
-2. Add GitHub as trusted publisher:
-   - Owner: `anthony-maio`
-   - Repository: `slipcore`
-   - Workflow: `publish.yml`
+- [ ] `MODEL_CARD.md` aligned with v3 Force+Object wire format
+- [ ] `data/README.md`, `data/DATASHEET.md`, `data/dataset-metadata.json`, `data/.zenodo.json` aligned
+- [ ] Hugging Face namespace links resolve (`anthonym21/...`)
 
----
-
-## Model & Dataset Release
-
-### 6. Generate Dataset
-```bash
-# Template-based (free, fast)
-python -m slipcore.finetune -n 1000 -f sharegpt_thought -o train.jsonl
-
-# LLM-enhanced (higher quality, requires API key)
-python -m slipcore.finetune_llm -n 1500 --provider anthropic -o train_llm.jsonl
-```
-
-### 7. Finetune Model
-See `.claude/skills/slipstream-finetune.md` for full instructions.
-
-### 8. Release Dataset to HuggingFace
-```python
-from datasets import Dataset
-import json
-
-with open("train.jsonl") as f:
-    data = [json.loads(line) for line in f]
-
-dataset = Dataset.from_list(data)
-dataset.push_to_hub("anthony-maio/slipstream-training-data")
-```
-
----
-
-## Post-Release
-
-### 9. Verify
-- [ ] Package installable: `pip install slipcore`
-- [ ] Imports work: `python -c "from slipcore import format_slip; print('OK')"`
-- [ ] PyPI page looks correct
-- [ ] GitHub release page has correct notes
-
-### 10. Announce
-- [ ] Update README badges if needed
-- [ ] Post to relevant communities
-
----
-
-## Links
+## 8. Publish Targets
 
 - PyPI: https://pypi.org/project/slipcore/
 - GitHub: https://github.com/anthony-maio/slipcore
-- HuggingFace Dataset: (TBD)
+- HF Dataset: https://huggingface.co/datasets/anthonym21/slipstream-tqt
+- HF Model: https://huggingface.co/anthonym21/slipstream-glm-z1-9b

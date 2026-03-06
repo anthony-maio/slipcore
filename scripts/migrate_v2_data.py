@@ -8,6 +8,7 @@ Usage:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -58,6 +59,17 @@ def migrate_wire(wire: str) -> str | None:
         clean = "".join(c for c in token if c.isalnum())
         if clean:
             clean_payload.append(clean[:30])  # MAX_PAYLOAD_TOKEN_LEN
+
+    if force == "Fallback":
+        # v4 enforces pointer refs for fallback wires. When legacy payload
+        # contains free-form fragments, collapse them into a deterministic ref.
+        first = clean_payload[0] if clean_payload else ""
+        is_valid_ref = first.startswith("ref") and len(first) <= 16 and first.isalnum()
+        if not is_valid_ref:
+            digest = hashlib.sha256(" ".join(payload).encode()).hexdigest()[:8]
+            clean_payload = [f"ref{digest}"]
+        else:
+            clean_payload = [first]
 
     v3_parts = ["SLIP", "v3", src, dst, force, obj]
     v3_parts.extend(clean_payload[:20])  # MAX_PAYLOAD_TOKENS

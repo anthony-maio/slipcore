@@ -11,6 +11,7 @@ from slipcore import (
     format_fallback,
     format_slip,
     parse_slip,
+    parse_slip_legacy,
     validate_wire,
 )
 from slipcore.intent import FORCE_VALUES, ForceToken
@@ -21,6 +22,7 @@ from slipcore.intent import FORCE_VALUES, ForceToken
 # ---------------------------------------------------------------------------
 
 ALL_FORCE_TOKENS: list[str] = [f.value for f in ForceToken]
+NON_FALLBACK_FORCE_TOKENS: list[str] = [f for f in ALL_FORCE_TOKENS if f != "Fallback"]
 
 
 # ===================================================================
@@ -39,10 +41,18 @@ class TestFormatSlip:
         wire = format_slip("dev", "reviewer", "Request", "Review", ["auth", "module"])
         assert wire == "SLIP v3 dev reviewer Request Review auth module"
 
-    @pytest.mark.parametrize("force", ALL_FORCE_TOKENS)
+    @pytest.mark.parametrize("force", NON_FALLBACK_FORCE_TOKENS)
     def test_all_force_tokens(self, force: str) -> None:
         wire = format_slip("src", "dst", force, "Task")
         assert wire == f"SLIP v3 src dst {force} Task"
+
+    def test_fallback_requires_ref_token(self) -> None:
+        with pytest.raises(WireValidationError, match="Fallback messages require a ref token"):
+            format_slip("src", "dst", "Fallback", "Generic")
+
+    def test_fallback_ref_too_long_rejected(self) -> None:
+        with pytest.raises(WireValidationError, match="Invalid fallback ref"):
+            format_slip("src", "dst", "Fallback", "Generic", ["r" * 17])
 
     def test_invalid_src_special_chars(self) -> None:
         with pytest.raises(WireValidationError, match="src invalid"):
@@ -160,6 +170,10 @@ class TestParseSlip:
         assert msg.fallback_ref == "ref7f3a"
         assert msg.payload == ("extra1",)
 
+    def test_fallback_without_ref_raises(self) -> None:
+        with pytest.raises(WireValidationError, match="Fallback messages require a ref token"):
+            parse_slip("SLIP v3 qa planner Fallback Generic")
+
     def test_too_short(self) -> None:
         with pytest.raises(WireParseError, match="Too short"):
             parse_slip("SLIP v3 src dst Request")
@@ -201,6 +215,14 @@ class TestValidateWire:
     def test_valid_with_payload_returns_empty(self) -> None:
         issues = validate_wire("SLIP v3 dev reviewer Request Review auth")
         assert issues == []
+
+    def test_fallback_missing_ref_reports_issue(self) -> None:
+        issues = validate_wire("SLIP v3 qa planner Fallback Generic")
+        assert any("Fallback requires a ref token" in i for i in issues)
+
+    def test_fallback_ref_too_long_reports_issue(self) -> None:
+        issues = validate_wire("SLIP v3 qa planner Fallback Generic ref12345678901234567")
+        assert any("Fallback ref too long" in i for i in issues)
 
     def test_too_few_tokens(self) -> None:
         issues = validate_wire("SLIP v3 src")
@@ -404,3 +426,23 @@ class TestEdgeCases:
         issues = validate_wire(wire)
         # Fallback with "Fallback" force is in FORCE_VALUES, so it validates
         assert issues == []
+
+
+class TestLegacyParsing:
+    """Legacy migration path for permissive fallback wires."""
+
+    def test_parse_slip_legacy_accepts_missing_fallback_ref(self) -> None:
+        msg = parse_slip_legacy("SLIP v3 qa planner Fallback Generic")
+        assert msg.is_fallback is True
+        assert msg.fallback_ref == "reflegacy"
+
+    def test_parse_slip_legacy_custom_default_ref(self) -> None:
+        msg = parse_slip_legacy(
+            "SLIP v3 qa planner Fallback Generic",
+            default_fallback_ref="refmigrated01",
+        )
+        assert msg.fallback_ref == "refmigrated01"
+
+    def test_parse_slip_legacy_still_raises_for_non_legacy_errors(self) -> None:
+        with pytest.raises(WireParseError):
+            parse_slip_legacy("not a slip message")

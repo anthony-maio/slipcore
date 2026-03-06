@@ -27,67 +27,62 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Lint with ruff
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
         run: ruff check src/
 
-      - name: Test imports
-        run: |
-          python -c "
-          from slipcore import (
-              format_slip, parse_slip, validate_wire, SlipMessage,
-              ForceToken, ObjectToken, Intent, resolve_intent, from_v2_mnemonic,
-              UCR, UCRAnchor, create_base_ucr,
-              render_human, render_log_line,
-              KeywordQuantizer, quantize, think_quantize_transmit,
-              ExtensionManager, FallbackTracker,
-              emit, register_sink, clear_sinks,
-          )
-          print('All imports OK')
-          "
-
-      - name: Test core functionality
-        run: |
-          python -c "
-          from slipcore import format_slip, parse_slip, render_human
-
-          # Test format/parse roundtrip
-          wire = format_slip('alice', 'bob', 'Request', 'Review', ['auth'])
-          msg = parse_slip(wire)
-          assert msg.src == 'alice'
-          assert msg.dst == 'bob'
-          assert msg.force == 'Request'
-          assert msg.obj == 'Review'
-          assert msg.payload == ('auth',)
-          assert wire == 'SLIP v3 alice bob Request Review auth'
-
-          # Test render
-          human = render_human(msg)
-          assert 'alice' in human and 'bob' in human
-
-          print('All core tests passed!')
-          "
-
-      - name: Test quantization
-        run: |
-          python -c "
-          from slipcore import KeywordQuantizer
-
-          q = KeywordQuantizer()
-          result = q.quantize('please review my code')
-          assert result.force == 'Request'
-          assert result.obj == 'Review'
-
-          print('Quantization test passed!')
-          "
-
-      - name: Test dataset generation
-        run: |
-          python -c "
-          from slipcore.finetune import generate_training_examples
-          examples = generate_training_examples(num_examples=10)
-          assert len(examples) == 10
-          assert all(e.response.startswith('SLIP v3') for e in examples)
-          print(f'Generated {len(examples)} v3 examples')
-          "
+      - name: Type check with mypy
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: mypy src/slipcore/
 
       - name: Run test suite
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
         run: pytest tests/ -v --tb=short
+
+  release_gate:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install build twine
+
+      - name: Check required release files
+        run: python scripts/ci/check_required_files.py
+
+      - name: Validate release checklist structure
+        run: python scripts/ci/check_release_checklist.py
+
+      - name: Run docs smoke checks
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: python scripts/ci/docs_smoke.py
+
+      - name: Check external links in release docs
+        run: python scripts/ci/check_links.py
+
+      - name: Build package artifacts
+        run: python -m build
+
+      - name: Check package metadata
+        run: python -m twine check dist/*
+
+      - name: Install from built wheel (smoke)
+        run: |
+          WHEEL=$(ls dist/slipcore-*.whl | head -n 1)
+          python -m venv .venv-smoke
+          source .venv-smoke/bin/activate
+          pip install "$WHEEL"
+          python -c "import os,tempfile; os.chdir(tempfile.gettempdir()); from slipcore import format_slip, parse_slip; wire=format_slip('a','b','Request','Task'); assert parse_slip(wire).wire==wire; print('wheel smoke OK')"

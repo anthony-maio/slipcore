@@ -1,188 +1,88 @@
 # Slipstream
 
-### Semantic Quantization for Multi-Agent AI Communication
+Semantic quantization for multi-agent AI coordination.
 
 [![PyPI](https://img.shields.io/pypi/v/slipcore?color=blue)](https://pypi.org/project/slipcore/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
-[![HuggingFace Model](https://img.shields.io/badge/HF-Model-yellow)](https://huggingface.co/anthonym21/slipstream-glm-z1-9b)
-[![HuggingFace Dataset](https://img.shields.io/badge/HF-Dataset-yellow)](https://huggingface.co/datasets/anthony-maio/slipstream-tqt)
+[![Model](https://img.shields.io/badge/HF-Model-yellow)](https://huggingface.co/anthonym21/slipstream-glm-z1-9b)
+[![Dataset](https://img.shields.io/badge/HF-Dataset-yellow)](https://huggingface.co/datasets/anthonym21/slipstream-tqt)
 [![Paper](https://img.shields.io/badge/Paper-Zenodo-blue)](https://doi.org/10.5281/zenodo.18063451)
 
----
+Slipstream encodes coordination messages as compact Force+Object intents:
 
-**82% fewer tokens. Factorized Force-Object intents. Built for the AAIF ecosystem.**
-
-```
-Before (45 tokens):
-{"from": "alice", "to": "bob", "type": "request", "action": "review", "target": "auth_module"}
-
-After (6 tokens):
-SLIP v3 alice bob Request Review auth
+```text
+SLIP v3 <src> <dst> <Force> <Object> [payload...]
 ```
 
-Multi-agent AI systems waste **40-60% of compute on coordination overhead**. At scale, that's **$180K-$2.5M/year** just for agents talking to each other.
+Typical JSON coordination messages (~40+ tokens) compress to ~6-8 wire tokens.
 
-Slipstream fixes this through *semantic quantization* - transmitting factorized intents (Force + Object) rather than verbose messages.
+## Start Here
 
-**v3 Innovation:** Factorized 2-token intents replace ~46 flat anchors. `SLIP v3 src dst Request Plan` instead of `SLIP v1 src dst RequestPlan`. This reduces the classification problem from 46-way to 12-way + 30-way, making it learnable by small models.
+- [Quick adoption guide](docs/start-here.md)
+- [SDK reference](docs/sdk-guide.md)
+- [v3 -> v4 migration notes](docs/migration-v4.md)
+- [Protocol invariants](spec/spec-00-invariants.md)
 
----
-
-## Quick Start
+## Install
 
 ```bash
 pip install slipcore
 ```
 
+## Quick Start
+
 ```python
-from slipcore import format_slip, parse_slip, render_human, KeywordQuantizer
+from slipcore import format_slip, parse_slip, quantize, render_human
 
-# Create a message (6 tokens instead of 45)
+# Direct formatting
 wire = format_slip("alice", "bob", "Request", "Review", ["auth"])
-# -> "SLIP v3 alice bob Request Review auth"
+assert wire == "SLIP v3 alice bob Request Review auth"
 
-# Or let the quantizer map natural language
-q = KeywordQuantizer()
-wire = q.quantize(
-    "Please check the authentication code for security issues",
-    src="dev", dst="reviewer"
+# Think -> Quantize -> Transmit helper
+wire2 = quantize(
+    "Please review the authentication code",
+    src="dev",
+    dst="reviewer",
 )
-# -> "SLIP v3 dev reviewer Request Review"
 
-# Parse
 msg = parse_slip(wire)
 print(msg.force, msg.obj, msg.payload)
-# Request Review ['auth']
-
-# Human-readable
 print(render_human(msg))
-# [alice -> bob] Request Review: "Request review of work" (payload: auth)
 ```
 
----
+## Strict Fallback Rules (v4.0.0)
 
-## Why Slipstream?
+Fallback messages are now strict:
 
-### The Problem
+- `Fallback` messages must include a ref token.
+- Ref token must be alphanumeric and 1-16 chars.
+- Use `parse_slip_legacy()` only for explicit migration of old permissive wires.
 
-BPE tokenizers **fragment compressed formats**, negating syntactic optimization:
+```python
+from slipcore import format_fallback, parse_slip_legacy
 
-```
-Compressed: REQ/TSK|s=7|d=3|act=review
-Expected:   8 tokens
-Actual:     22 tokens (every | and = is a token!)
-```
-
-### The Solution
-
-Slipstream uses a **Universal Concept Reference (UCR)** - a shared semantic manifold where common agent intents have factorized names (Force + Object) that tokenize efficiently across all LLM architectures.
-
-| Format | Tokens | Annual Cost (50 agents) |
-|--------|--------|------------------------|
-| JSON verbose | ~45 | $180,000 |
-| JSON minimal | ~30 | $120,000 |
-| **Slipstream v3** | **~6-8** | **$32,000** |
-
----
-
-## Wire Format
-
-```
-SLIP v3 <src> <dst> <Force> <Object> [payload...]
+wire = format_fallback("qa", "planner", "ref7f3a")
+legacy = parse_slip_legacy("SLIP v3 qa planner Fallback Generic")
+assert legacy.fallback_ref == "reflegacy"
 ```
 
-- **Factorized intents** - Force (action verb) + Object (domain noun)
-- **No special characters** - avoids BPE fragmentation
-- **Space-separated** - clean tokenization
-- **12 Force tokens** - closed vocabulary, easily learned
-- **Zero core dependencies** - stdlib-only core package
+## Force Vocabulary (Closed, 12)
 
-### Force Tokens (12 closed vocabulary)
+`Observe`, `Inform`, `Ask`, `Request`, `Propose`, `Commit`, `Eval`, `Meta`, `Accept`, `Reject`, `Error`, `Fallback`
 
-| Force | Description |
-|-------|-------------|
-| `Observe` | Passively notice state/change/error |
-| `Inform` | Report information (status, completion, blockage) |
-| `Ask` | Request information (clarification, status, permission) |
-| `Request` | Ask for action (task, review, help, plan) |
-| `Propose` | Suggest something (plan, change, alternative) |
-| `Commit` | Commit to something (task, deadline, resource) |
-| `Eval` | Evaluate work (approve, needs work) |
-| `Meta` | Protocol-level (acknowledge, sync, handoff) |
-| `Accept` | Accept a proposal/request |
-| `Reject` | Decline a proposal/request |
-| `Error` | Report system error |
-| `Fallback` | Content too specific for standard tokens |
+## Ecosystem
 
-### Core Object Tokens
+- Model: [anthonym21/slipstream-glm-z1-9b](https://huggingface.co/anthonym21/slipstream-glm-z1-9b)
+- Dataset: [anthonym21/slipstream-tqt](https://huggingface.co/datasets/anthonym21/slipstream-tqt)
+- A2A transport extension: [extensions/a2a-slipstream/v1](extensions/a2a-slipstream/v1)
 
-Task, Plan, Review, Help, Status, Complete, Blocked, Progress, State, Change, Error, Result, Clarify, Permission, Resource, Cancel, Priority, Alternative, Rollback, Deadline, Approve, NeedsWork, Ack, Sync, Handoff, Escalate, Abort, Condition, Defer, Timeout, Validation, Generic
+## Governance
 
----
-
-## Finetuned Model
-
-We provide a ready-to-use model trained on the Slipstream protocol:
-
-| Format | Link | Use Case |
-|--------|------|----------|
-| LoRA Adapter | [slipstream-glm-z1-9b](https://huggingface.co/anthonym21/slipstream-glm-z1-9b) | Merge with base |
-| GGUF Q4 | [slipstream-glm-z1-9b-gguf](https://huggingface.co/anthonym21/slipstream-glm-z1-9b-gguf) | Ollama / llama.cpp |
-| Dataset | [slipstream-tqt](https://huggingface.co/datasets/anthony-maio/slipstream-tqt) | Train your own |
-
-### Run with Ollama
-
-```bash
-ollama run anthony-maio/slipstream
-```
-
-### Train Your Own
-
-```bash
-# Generate v3 training dataset
-python -m slipcore.finetune -n 1000 -f sharegpt_thought -o train.jsonl
-
-# Or use LLM-enhanced generation
-python -m slipcore.finetune_llm -n 1000 --provider gemini -o train.jsonl
-
-# Migrate existing v2 data to v3
-python scripts/migrate_v2_data.py data/slipstream-tqt.jsonl data/slipstream-tqt-v3.jsonl
-```
-
----
-
-## AAIF Integration
-
-Slipstream is designed as the **transport layer** for the Linux Foundation Agentic AI ecosystem:
-
-```
-+-------------------------------------+
-|   Application (Agent Logic)         |
-+----------------+--------------------+
-                 |
-+----------------v--------------------+
-|   MCP / A2A (Semantic Layer)        |
-+----------------+--------------------+
-                 |
-+----------------v--------------------+
-|   Slipstream (Transport Layer)      |  <- 82% token reduction
-+----------------+--------------------+
-                 |
-+----------------v--------------------+
-|   Network                           |
-+-------------------------------------+
-```
-
----
-
-## Resources
-
-- **Paper**: [Slipstream: Semantic Quantization for Efficient Multi-Agent Coordination](https://doi.org/10.5281/zenodo.18063451)
-- **Model**: [HuggingFace](https://huggingface.co/anthonym21/slipstream-glm-z1-9b)
-- **Dataset**: [HuggingFace](https://huggingface.co/datasets/anthony-maio/slipstream-tqt)
-- **Spec**: [spec/spec-00-invariants.md](spec/spec-00-invariants.md)
-
----
+- [Contributing](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md)
+- [Project Governance](GOVERNANCE.md)
+- [Maintainers](MAINTAINERS.md)
 
 ## Citation
 
@@ -195,16 +95,6 @@ Slipstream is designed as the **transport layer** for the Linux Foundation Agent
 }
 ```
 
----
-
 ## License
 
-Apache 2.0
-
----
-
-**Stop paying the token tax.**
-
-```bash
-pip install slipcore
-```
+Apache 2.0.
