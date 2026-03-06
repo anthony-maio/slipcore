@@ -14,7 +14,7 @@ from enum import Enum, unique
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
-from .errors import AnchorNotFoundError, UCRError
+from .errors import UCRError
 
 CORE_RANGE_END = 0x8000
 LEVELS_PER_DIM = 8
@@ -121,7 +121,13 @@ class UCR:
             if anchor.state == AnchorState.DEPRECATED:
                 continue
             dist = sum(abs(a - b) for a, b in zip(anchor.coords, coords))
-            if dist < best_dist or (dist == best_dist and best is not None and anchor.index < best.index):
+            is_closer = dist < best_dist
+            is_tiebreak = (
+                dist == best_dist
+                and best is not None
+                and anchor.index < best.index
+            )
+            if is_closer or is_tiebreak:
                 best_dist = dist
                 best = anchor
         if best is None:

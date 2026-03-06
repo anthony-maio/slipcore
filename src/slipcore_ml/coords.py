@@ -6,7 +6,7 @@ Ported from v2's CoordsInferer with prototype embedding similarity.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Optional
 
 import numpy as np
 
@@ -53,12 +53,36 @@ class CoordsInferer:
         self._proto_domain: Dict[str, np.ndarray] = {}
 
         self._action_phrases = {
-            "REQ": ["Please do this task.", "Can you help with this request?", "I need you to do something."],
-            "INF": ["FYI, here is a status update.", "I finished the task.", "This is an informational update."],
-            "EVAL": ["Please review and evaluate this.", "Assess the quality of this work.", "Give a critique of this design."],
-            "CMD": ["Do this immediately.", "Execute this command.", "Run the operation now."],
-            "OBS": ["I noticed something changed.", "The current state is...", "I observed an issue."],
-            "PROP": ["I suggest we do this.", "Here's my proposal.", "We could try this approach."],
+            "REQ": [
+                "Please do this task.",
+                "Can you help with this request?",
+                "I need you to do something.",
+            ],
+            "INF": [
+                "FYI, here is a status update.",
+                "I finished the task.",
+                "This is an informational update.",
+            ],
+            "EVAL": [
+                "Please review and evaluate this.",
+                "Assess the quality of this work.",
+                "Give a critique of this design.",
+            ],
+            "CMD": [
+                "Do this immediately.",
+                "Execute this command.",
+                "Run the operation now.",
+            ],
+            "OBS": [
+                "I noticed something changed.",
+                "The current state is...",
+                "I observed an issue.",
+            ],
+            "PROP": [
+                "I suggest we do this.",
+                "Here's my proposal.",
+                "We could try this approach.",
+            ],
         }
         self._domain_phrases = {
             "TASK": ["Assign a task ticket.", "Work item status update."],

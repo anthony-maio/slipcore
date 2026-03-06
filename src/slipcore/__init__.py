@@ -12,7 +12,7 @@ Usage:
     '[planner -> exec] Request Plan: "Request plan creation"'
 """
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 from .errors import (
     AnchorNotFoundError,
@@ -36,25 +36,31 @@ from .events import (
     register_sink,
     unregister_sink,
 )
+from .extensions import ExtensionManager, FallbackTracker
 from .intent import (
     CORE_OBJECTS,
+    V2_TO_V3,
     ForceToken,
     Intent,
     ObjectToken,
-    V2_TO_V3,
     from_v2_mnemonic,
     resolve_intent,
+)
+from .quantizer import (
+    KeywordQuantizer,
+    QuantizeResult,
+    get_default_quantizer,
+    quantize,
+    think_quantize_transmit,
 )
 from .render import render_human, render_log_line
 from .ucr import (
     UCR,
+    AnchorState,
     UCRAnchor,
     UCRAuthority,
-    AnchorState,
     create_base_ucr,
 )
-from .quantizer import KeywordQuantizer, QuantizeResult, get_default_quantizer, quantize, think_quantize_transmit
-from .extensions import ExtensionManager, FallbackTracker
 from .wire import (
     WIRE_VERSION,
     SlipMessage,

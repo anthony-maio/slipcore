@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import hashlib
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from .events import FallbackEmitted, FallbackStore, Quantized, emit
-from .intent import CORE_OBJECTS, ForceToken
 from .wire import format_fallback, format_slip
 
 # ============ Two-Stage Keyword Patterns ============

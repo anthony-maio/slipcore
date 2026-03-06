@@ -8,12 +8,11 @@ Wire format: SLIP v3 <src> <dst> <Force> <Object> [payload...]
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
-
 
 # ============ System Prompts ============
 
@@ -323,7 +322,8 @@ def _generate_fallback_examples() -> list[TrainingExample]:
         for _ in range(2):
             dst = random.choice(destinations)
             instruction = instruction_tmpl.format(dst=dst)
-            wire = f"SLIP v3 agent {dst} Fallback Generic refXXXX"
+            ref = "ref" + hashlib.sha256(instruction.encode()).hexdigest()[:8]
+            wire = f"SLIP v3 agent {dst} Fallback Generic {ref}"
 
             examples.append(TrainingExample(
                 instruction=instruction,

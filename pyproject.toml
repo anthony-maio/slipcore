@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "slipcore"
-version = "3.0.0"
+version = "3.1.0"
 description = "Token-efficient agent-to-agent coordination protocol"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = {text = "Apache-2.0"}
 authors = [{name = "Slipstream Contributors"}]
 keywords = ["agents", "llm", "coordination", "protocol", "a2a", "mcp"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -35,21 +35,15 @@ ml = [
 a2a = [
     "httpx>=0.25",
 ]
-tools = [
-    "slipcore[ml]",
-    "click>=8.0",
-    "rich>=13.0",
-    "tiktoken>=0.5",
-]
 dev = [
-    "slipcore[tools,a2a]",
+    "slipcore[ml,a2a]",
     "pytest>=8.0",
     "pytest-cov>=4.0",
     "hypothesis>=6.0",
     "mypy>=1.5",
     "ruff>=0.1",
 ]
-all = ["slipcore[ml,a2a,tools]"]
+all = ["slipcore[ml,a2a]"]
 
 [project.urls]
 Homepage = "https://github.com/anthony-maio/slipcore"
@@ -58,7 +52,7 @@ Repository = "https://github.com/anthony-maio/slipcore"
 Issues = "https://github.com/anthony-maio/slipcore/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/slipcore", "src/slipcore_ml", "src/slipcore_tools"]
+packages = ["src/slipcore", "src/slipcore_ml"]
 
 [tool.hatch.build]
 include = ["src/slipcore/py.typed", "src/slipcore/data/*.json"]
@@ -69,6 +63,11 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# Multiline string literals contain LLM prompt text that cannot be reformatted
+"src/slipcore/finetune.py" = ["E501"]
+"src/slipcore/finetune_llm.py" = ["E501"]
 
 [tool.mypy]
 strict = true

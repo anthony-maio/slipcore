@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from .events import ExtensionProposed, emit
-from .ucr import UCR, UCRAnchor, AnchorState, Coords, create_base_ucr
+from .ucr import UCR, Coords, UCRAnchor, create_base_ucr
 
 
 @dataclass

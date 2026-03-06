@@ -39,17 +39,17 @@ Usage:
 """
 
 from __future__ import annotations
+
 import json
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .finetune import SYSTEM_PROMPT_BASIC, SYSTEM_PROMPT_DETAILED
-
 
 # ============ LLM Provider Configs ============
 
@@ -786,7 +786,7 @@ def main() -> None:
             resume=args.resume,
         )
         print(f"\nSuccess! Generated {count} v3 examples")
-        print(f"Ready for finetuning with Unsloth or similar tools")
+        print("Ready for finetuning with Unsloth or similar tools")
     except Exception as e:
         print(f"Error: {e}")
         raise
