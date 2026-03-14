@@ -1,43 +1,45 @@
 ---
-title: Slipstream Protocol
-emoji: ⚡
-colorFrom: blue
-colorTo: purple
+title: Slipstream Lab
+emoji: 🧭
+colorFrom: yellow
+colorTo: gray
 sdk: gradio
-sdk_version: 4.44.0
+sdk_version: 6.5.1
 app_file: app.py
 pinned: false
 license: apache-2.0
-short_description: "82% token reduction for multi-agent AI communication"
+short_description: "CPU-first technical companion for Slipstream 3.1.1"
 ---
 
-# Slipstream: Semantic Quantization for Multi-Agent AI Communication
+# Slipstream Lab
 
-**82% fewer tokens. Semantic meaning preserved. Built for the AAIF ecosystem.**
+Technical companion Space for Slipstream `3.1.1`.
 
-This Space provides an interactive demo of the Slipstream protocol - a semantic quantization system that dramatically reduces token costs in multi-agent AI systems.
+This Space is intentionally different from [slipstream.making-minds.ai](https://slipstream.making-minds.ai):
 
-## Features
+- the website explains and promotes the release
+- this Space helps engineers inspect the shipped protocol and adoption path
 
-- **Encode**: Create Slipstream wire format messages
-- **Decode**: Parse and understand SLIP messages
-- **UCR Reference**: Browse all 21 semantic anchors
+## Tabs
+
+- `Overview`: release metrics and links
+- `UCR Explorer`: browse the 45 core anchors
+- `Conformance Lab`: validate and parse real `SLIP v3` wires
+- `LangGraph Starter`: copy-paste integration snippets
+- `Dataset / Model`: understand when training is optional and when it helps
+
+## Runtime model
+
+- CPU-first
+- ZeroGPU-compatible
+- no live model inference
+- no training workflow
 
 ## Resources
 
-- **Paper**: [doi.org/10.5281/zenodo.18063451](https://doi.org/10.5281/zenodo.18063451)
-- **GitHub**: [github.com/anthony-maio/slipcore](https://github.com/anthony-maio/slipcore)
-- **PyPI**: `pip install slipcore`
-- **Model**: [anthonym21/slipstream-glm-z1-9b](https://huggingface.co/anthonym21/slipstream-glm-z1-9b)
-- **Dataset**: [anthonym21/slipstream-tqt](https://huggingface.co/datasets/anthonym21/slipstream-tqt)
-
-## Citation
-
-```bibtex
-@misc{maio2025slipstream,
-  title={Slipstream: Semantic Quantization for Efficient Multi-Agent Coordination},
-  author={Maio, Anthony},
-  year={2025},
-  doi={10.5281/zenodo.18063451}
-}
-```
+- Website: [slipstream.making-minds.ai](https://slipstream.making-minds.ai)
+- GitHub: [anthony-maio/slipcore](https://github.com/anthony-maio/slipcore)
+- PyPI: [slipcore](https://pypi.org/project/slipcore/)
+- Paper: [doi.org/10.5281/zenodo.18063451](https://doi.org/10.5281/zenodo.18063451)
+- Dataset: [anthonym21/slipstream-tqt](https://huggingface.co/datasets/anthonym21/slipstream-tqt)
+- Reference model: [anthonym21/slipstream-glm-z1-9b](https://huggingface.co/anthonym21/slipstream-glm-z1-9b)
