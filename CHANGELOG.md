@@ -3,6 +3,14 @@
 All notable changes to slipcore are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.1] - 2026-03-14
+
+### Added
+- Regression tests that pin the GitHub Actions workflow majors used by CI and publishing
+
+### Fixed
+- Updated GitHub Actions to Node 24-ready majors: `actions/checkout@v5` and `actions/setup-python@v6`
+
 ## [3.1.0] - 2026-03-06
 
 ### Changed
@@ -70,6 +78,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - UCR manifold with 4D coordinate system
 - Template-based finetuning dataset generator
 
+[3.1.1]: https://github.com/anthony-maio/slipcore/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/anthony-maio/slipcore/compare/v2.4.0...v3.1.0
 [3.0.0]: https://github.com/anthony-maio/slipcore/compare/v2.4.0...v3.0.0
 [2.4.0]: https://github.com/anthony-maio/slipcore/compare/v2.0.0...v2.4.0
