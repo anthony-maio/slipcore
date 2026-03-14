@@ -19,9 +19,11 @@ Typical JSON coordination messages (~40+ tokens) compress to ~6-8 wire tokens.
 ## Start Here
 
 - [Quick adoption guide](docs/start-here.md)
+- [LangGraph integration guide](docs/langgraph-guide.md)
 - [SDK reference](docs/sdk-guide.md)
-- [v3 -> v4 migration notes](docs/migration-v4.md)
+- [v3.0 -> v3.1 migration notes](docs/migration-v3-1.md)
 - [Protocol invariants](spec/spec-00-invariants.md)
+- [Canonical paper source (v3.1 markdown)](docs/paper/slipstream-v3.1.md)
 
 ## Install
 
@@ -50,7 +52,7 @@ print(msg.force, msg.obj, msg.payload)
 print(render_human(msg))
 ```
 
-## Strict Fallback Rules (v4.0.0)
+## Strict Fallback Rules (v3.1.0)
 
 Fallback messages are now strict:
 

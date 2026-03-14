@@ -15,8 +15,10 @@ REQUIRED_FILES = [
     ".github/ISSUE_TEMPLATE/bug_report.md",
     ".github/ISSUE_TEMPLATE/feature_request.md",
     "docs/claim-map.md",
+    "docs/paper/slipstream-v3.1.md",
     "docs/start-here.md",
-    "docs/migration-v4.md",
+    "docs/langgraph-guide.md",
+    "docs/migration-v3-1.md",
 ]
 
 

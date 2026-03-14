@@ -27,7 +27,7 @@ If your PR changes protocol behavior, you must update in the same PR:
 1. Spec (`spec/spec-00-invariants.md` and relevant conformance vectors)
 2. Code (`src/slipcore/...`)
 3. Tests (`tests/...`)
-4. Paper source (`private/zenodo/slipstream-paper-v3.tex`)
+4. Paper source (`docs/paper/slipstream-v3.1.md`)
 5. Claim map (`docs/claim-map.md`)
 
 ## Extension Proposals (RFC-lite)

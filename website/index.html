@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slipstream 3.1 — Kill the token tax</title>
+  <meta name="description" content="Slipstream 3.1 is a token-efficient transport layer for multi-agent systems. 82% smaller coordination messages, LangGraph-ready, and deployable without model retraining.">
+  <meta property="og:title" content="Slipstream 3.1 — Kill the token tax">
+  <meta property="og:description" content="82% smaller coordination traffic, strict wire protocol, governance, and LangGraph adoption without model retraining.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#c57f31">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <nav class="site-nav" id="site-nav" aria-label="Main navigation">
+    <div class="container-wide nav-inner">
+      <a href="#" class="brand" aria-label="Slipstream home">
+        <span class="brand-mark">SLIP</span>
+        <span class="brand-text">Slipstream 3.1</span>
+      </a>
+      <div class="nav-links">
+        <a href="#problem">Problem</a>
+        <a href="#protocol">Protocol</a>
+        <a href="#langgraph">LangGraph</a>
+        <a href="#playground">Playground</a>
+        <a href="#release">Adoption</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">theme</button>
+        <a class="btn btn-ghost" href="https://github.com/anthony-maio/slipcore" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="btn btn-primary" href="#langgraph">Adopt in LangGraph</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content">
+    <section class="hero">
+      <div class="container-wide hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow">Transport Layer for Multi-Agent Systems</div>
+          <h1>Kill the token tax.</h1>
+          <p class="hero-lead">
+            Slipstream 3.1 turns verbose agent coordination into a compact wire protocol:
+            <code>SLIP v3 &lt;src&gt; &lt;dst&gt; &lt;Force&gt; &lt;Object&gt; [payload...]</code>.
+          </p>
+          <p class="hero-sub">
+            Use it when your agents exchange a lot of routine coordination traffic: requests, status updates,
+            handoffs, approvals, and errors. Slipstream keeps those messages compact, explicit, and easy to route.
+            Start with LangGraph adapters and fallback. Train later only if your workload needs it.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#langgraph">See LangGraph adoption</a>
+            <a class="btn btn-ghost" href="#playground">Try the playground</a>
+          </div>
+          <div class="hero-stats" role="list" aria-label="Release stats">
+            <div class="stat" role="listitem">
+              <div class="stat-value">82%</div>
+              <div class="stat-label">smaller coordination messages</div>
+            </div>
+            <div class="stat" role="listitem">
+              <div class="stat-value">579</div>
+              <div class="stat-label">tests passing in 3.1</div>
+            </div>
+            <div class="stat" role="listitem">
+              <div class="stat-value">0</div>
+              <div class="stat-label">core dependencies</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-panel" aria-hidden="true">
+          <div class="signal-frame">
+            <div class="frame-label">Coordination before</div>
+            <pre class="signal-block signal-block-dense">{"from":"planner","to":"reviewer","type":"request","action":"review","target":"auth_module"}</pre>
+            <div class="frame-label">Coordination after</div>
+            <pre class="signal-block">SLIP v3 planner reviewer Request Review auth</pre>
+            <div class="token-bar">
+              <div class="token-old">
+                <span>JSON</span>
+                <strong>~42 tokens</strong>
+              </div>
+              <div class="token-new">
+                <span>Slipstream</span>
+                <strong>7 tokens</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-surface" id="problem">
+      <div class="container">
+        <div class="section-label">The Problem</div>
+        <h2>Agent systems waste money on coordination syntax.</h2>
+        <p class="section-intro">
+          In real multi-agent systems, the expensive part is often not reasoning. It is agents repeatedly sending routing metadata,
+          task wrappers, and status envelopes across every hop. Slipstream exists to compress that layer without turning the protocol
+          into unreadable symbol soup.
+        </p>
+        <div class="problem-grid">
+          <article class="card card-plain">
+            <div class="card-kicker">What breaks</div>
+            <h3>Verbose coordination scales badly.</h3>
+            <ul class="bullet-list" role="list">
+              <li>Every agent-to-agent handoff pays the JSON tax again.</li>
+              <li>Special characters fragment under BPE tokenizers.</li>
+              <li>Coordination overhead eats context that should go to reasoning.</li>
+              <li>Flat intent vocabularies are harder for small models to learn.</li>
+            </ul>
+          </article>
+          <article class="card card-accent">
+            <div class="card-kicker">Why teams adopt it</div>
+            <h3>Smaller messages without hiding the intent.</h3>
+            <ul class="bullet-list" role="list">
+              <li>Force + Object keeps the wire compact and still readable.</li>
+              <li>Alphanumeric tokens avoid the tokenizer fragmentation that kills syntactic compression.</li>
+              <li>Strict parsing and fallback refs make the behavior predictable in production.</li>
+              <li>LangGraph adapters let you pilot at the orchestration layer before you retrain anything.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="protocol">
+      <div class="container">
+        <div class="section-label">The Protocol</div>
+        <h2>Readable on the wire. Strict in the runtime.</h2>
+        <p class="section-intro">
+          At a glance, Slipstream is just a short, human-readable wire format. Under the hood, 3.1 adds the hard edges
+          needed for production use: strict validation, closed core semantics, and explicit fallback behavior.
+        </p>
+        <div class="protocol-grid">
+          <article class="card">
+            <h3>Wire grammar</h3>
+            <pre class="code-block">SLIP v3 &lt;src&gt; &lt;dst&gt; &lt;Force&gt; &lt;Object&gt; [payload...]</pre>
+            <ul class="bullet-list" role="list">
+              <li>alphanumeric tokens only</li>
+              <li><code>src</code> and <code>dst</code>: 1-20 chars</li>
+              <li>payload tokens: 0-20</li>
+              <li>payload token max length: 30</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Closed Force vocabulary</h3>
+            <div class="chip-grid" aria-label="Force tokens">
+              <span class="chip">Observe</span>
+              <span class="chip">Inform</span>
+              <span class="chip">Ask</span>
+              <span class="chip">Request</span>
+              <span class="chip">Propose</span>
+              <span class="chip">Commit</span>
+              <span class="chip">Eval</span>
+              <span class="chip">Meta</span>
+              <span class="chip">Accept</span>
+              <span class="chip">Reject</span>
+              <span class="chip">Error</span>
+              <span class="chip">Fallback</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Fallback stays off-wire</h3>
+            <pre class="code-block">SLIP v3 devops sre Fallback Generic ref7f3a1b2c</pre>
+            <p class="card-copy">
+              Fallback content is stored out-of-band. The wire only carries a short ref token.
+              That keeps edge cases safe without giving up the compact transport format.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-surface" id="langgraph">
+      <div class="container">
+        <div class="section-label">LangGraph</div>
+        <h2>Add Slipstream to LangGraph without retraining your agents first.</h2>
+        <p class="section-intro">
+          Slipstream fits between your graph logic and your transport. Keep your existing nodes, prompts, and tools.
+          Add encode and decode nodes around handoffs, then route on <code>Force:Object</code>. The built-in keyword
+          quantizer gets you started, and fallback refs catch everything that does not quantize cleanly.
+        </p>
+        <div class="steps-grid" role="list">
+          <article class="step-card" role="listitem">
+            <div class="step-number">01</div>
+            <h3>Keep your graph state</h3>
+            <p>Your nodes still produce natural-language intent and context. Slipstream does not require a rewrite of your agent logic.</p>
+          </article>
+          <article class="step-card" role="listitem">
+            <div class="step-number">02</div>
+            <h3>Encode at the boundary</h3>
+            <p>The adapter turns that intent into <code>SLIP v3</code> messages or fallback refs before the message leaves the handoff boundary.</p>
+          </article>
+          <article class="step-card" role="listitem">
+            <div class="step-number">03</div>
+            <h3>Route and observe</h3>
+            <p>Dispatch on <code>Request:Review</code>, <code>Inform:Status</code>, or <code>Fallback:Generic</code>, then measure fallback rate before deciding whether to train.</p>
+          </article>
+        </div>
+        <div class="code-pair">
+          <div class="code-card">
+            <div class="code-title">Install</div>
+            <pre class="code-block">pip install slipcore
+pip install langgraph</pre>
+          </div>
+          <div class="code-card">
+            <div class="code-title">Minimal adapter use</div>
+            <pre class="code-block">from slipcore import (
+    LangGraphSlipstreamAdapter,
+    make_encode_node,
+    make_decode_node,
+    make_force_object_router,
+)</pre>
+          </div>
+        </div>
+        <div class="inline-links">
+          <a href="https://github.com/anthony-maio/slipcore/blob/release/v3.1.0/docs/langgraph-guide.md" target="_blank" rel="noopener noreferrer">Read the LangGraph guide</a>
+          <a href="https://github.com/anthony-maio/slipcore/blob/release/v3.1.0/examples/langgraph_platform_skeleton/graph.py" target="_blank" rel="noopener noreferrer">See the platform skeleton</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="playground">
+      <div class="container">
+        <div class="section-label">Playground</div>
+        <h2>Try the wire format, inspect the message shape, and estimate the savings.</h2>
+        <p class="section-intro">
+          If you are evaluating fit for your stack, start here. Build a message, decode one back into intent,
+          and sanity-check whether the coordination savings are material for your workload.
+        </p>
+        <div class="playground-grid">
+          <article class="play-card">
+            <h3>Wire builder</h3>
+            <div class="field-grid">
+              <label>
+                <span>Source</span>
+                <input id="src-input" type="text" value="planner">
+              </label>
+              <label>
+                <span>Destination</span>
+                <input id="dst-input" type="text" value="reviewer">
+              </label>
+              <label>
+                <span>Force</span>
+                <select id="force-input">
+                  <option>Request</option>
+                  <option>Inform</option>
+                  <option>Ask</option>
+                  <option>Observe</option>
+                  <option>Propose</option>
+                  <option>Commit</option>
+                  <option>Eval</option>
+                  <option>Meta</option>
+                  <option>Accept</option>
+                  <option>Reject</option>
+                  <option>Error</option>
+                  <option>Fallback</option>
+                </select>
+              </label>
+              <label>
+                <span>Object</span>
+                <input id="obj-input" type="text" value="Review">
+              </label>
+            </div>
+            <label class="field-stack">
+              <span>Payload tokens</span>
+              <input id="payload-input" type="text" value="auth module">
+            </label>
+            <button class="btn btn-primary btn-block" id="encode-btn">Encode</button>
+            <div class="output" id="encode-output" aria-live="polite"></div>
+          </article>
+
+          <article class="play-card">
+            <h3>Wire decoder</h3>
+            <label class="field-stack">
+              <span>Slipstream wire</span>
+              <textarea id="wire-input" rows="5">SLIP v3 planner reviewer Request Review auth</textarea>
+            </label>
+            <button class="btn btn-primary btn-block" id="decode-btn">Decode</button>
+            <div class="output" id="decode-output" aria-live="polite"></div>
+          </article>
+
+          <article class="play-card play-card-wide">
+            <h3>Coordination cost calculator</h3>
+            <div class="field-grid field-grid-3">
+              <label>
+                <span>Agents</span>
+                <input id="agents-input" type="number" min="1" value="50">
+              </label>
+              <label>
+                <span>Messages / day</span>
+                <input id="messages-input" type="number" min="1" value="1000">
+              </label>
+              <label>
+                <span>Input $ / 1M tokens</span>
+                <input id="price-input" type="number" min="0" step="0.01" value="5">
+              </label>
+            </div>
+            <p class="calculator-note">
+              Assumes average coordination message drops from 41.9 tokens to 7.4 tokens.
+            </p>
+            <button class="btn btn-ghost btn-block" id="calc-btn">Calculate annual savings</button>
+            <div class="calculator-grid" id="calc-output" aria-live="polite"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-surface" id="release">
+      <div class="container">
+        <div class="section-label">Adoption</div>
+        <h2>Everything you need to evaluate, pilot, and ship Slipstream 3.1.</h2>
+        <div class="release-grid">
+          <article class="card">
+            <h3>Protocol you can trust</h3>
+            <ul class="bullet-list" role="list">
+              <li>Strict parser and validator for the <code>SLIP v3</code> wire format.</li>
+              <li>Closed Force vocabulary and immutable core anchors.</li>
+              <li>Fallback refs stay off-wire and keep long-tail messages bounded.</li>
+              <li>Conformance tests and release gates back the implementation.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Adoption path that starts where you are</h3>
+            <ul class="bullet-list" role="list">
+              <li>Use the LangGraph adapter at the orchestration layer first.</li>
+              <li>Keep your existing prompts, tools, and agent behaviors.</li>
+              <li>Start with keyword quantization plus fallback and measure real traffic.</li>
+              <li>Train a model later only if your workload needs higher recall.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Code, docs, and references</h3>
+            <p class="card-copy">
+              Read the code, install the package, review the paper, and inspect the dataset and reference model
+              if you want to go beyond rules-based adoption.
+            </p>
+            <div class="artifact-links">
+              <a href="https://github.com/anthony-maio/slipcore" target="_blank" rel="noopener noreferrer">GitHub repository</a>
+              <a href="https://pypi.org/project/slipcore/" target="_blank" rel="noopener noreferrer">PyPI package</a>
+              <a href="https://doi.org/10.5281/zenodo.18063451" target="_blank" rel="noopener noreferrer">Paper on Zenodo</a>
+              <a href="https://huggingface.co/datasets/anthonym21/slipstream-tqt" target="_blank" rel="noopener noreferrer">Training dataset</a>
+              <a href="https://huggingface.co/anthonym21/slipstream-glm-z1-9b" target="_blank" rel="noopener noreferrer">Reference model</a>
+            </div>
+          </article>
+        </div>
+        <div class="faq">
+          <article class="faq-item">
+            <h3>Do I need to retrain my agents or models before I can use Slipstream?</h3>
+            <p>No. Start with orchestrator-layer encoding and decoding, route on <code>Force:Object</code>, and let fallback handle the long tail. Training is optional and usually comes later, after you have measured real traffic.</p>
+          </article>
+          <article class="faq-item">
+            <h3>What happens when a message does not fit the vocabulary?</h3>
+            <p>Slipstream uses pointer-based fallback. The wire carries a short ref token and the full content stays in your fallback store, so edge cases do not break the protocol or blow up message size.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Where should Slipstream sit in my stack?</h3>
+            <p>Between your agent logic and your transport or message bus. In LangGraph, that usually means encode and decode nodes at the boundaries where agents hand work to each other.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <div class="footer-brand">Slipstream 3.1</div>
+        <p class="footer-copy">Factorized semantic quantization for scalable multi-agent coordination.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/anthony-maio/slipcore" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://pypi.org/project/slipcore/" target="_blank" rel="noopener noreferrer">PyPI</a>
+        <a href="https://doi.org/10.5281/zenodo.18063451" target="_blank" rel="noopener noreferrer">Paper</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

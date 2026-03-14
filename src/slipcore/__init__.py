@@ -12,7 +12,7 @@ Usage:
     '[planner -> exec] Request Plan: "Request plan creation"'
 """
 
-__version__ = "4.0.0"
+__version__ = "3.1.0"
 
 from .errors import (
     AnchorNotFoundError,
@@ -45,6 +45,14 @@ from .intent import (
     ObjectToken,
     from_v2_mnemonic,
     resolve_intent,
+)
+from .langgraph import (
+    DecodedSlip,
+    LangGraphSlipstreamAdapter,
+    make_decode_node,
+    make_encode_node,
+    make_force_object_router,
+    make_force_router,
 )
 from .quantizer import (
     KeywordQuantizer,
@@ -89,6 +97,13 @@ __all__ = [
     "resolve_intent",
     "from_v2_mnemonic",
     "V2_TO_V3",
+    # LangGraph
+    "DecodedSlip",
+    "LangGraphSlipstreamAdapter",
+    "make_encode_node",
+    "make_decode_node",
+    "make_force_router",
+    "make_force_object_router",
     # UCR
     "UCR",
     "UCRAnchor",

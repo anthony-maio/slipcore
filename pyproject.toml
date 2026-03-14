@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "slipcore"
-version = "4.0.0"
+version = "3.1.0"
 description = "Token-efficient agent-to-agent coordination protocol"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,15 +35,18 @@ ml = [
 a2a = [
     "httpx>=0.25",
 ]
+langgraph = [
+    "langgraph>=0.2",
+]
 dev = [
-    "slipcore[ml,a2a]",
+    "slipcore[ml,a2a,langgraph]",
     "pytest>=8.0",
     "pytest-cov>=4.0",
     "hypothesis>=6.0",
     "mypy>=1.5",
     "ruff>=0.1",
 ]
-all = ["slipcore[ml,a2a]"]
+all = ["slipcore[ml,a2a,langgraph]"]
 
 [project.urls]
 Homepage = "https://github.com/anthony-maio/slipcore"
