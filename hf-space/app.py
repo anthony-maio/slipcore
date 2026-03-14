@@ -1,284 +1,431 @@
-"""
-Slipstream v3: Semantic Quantization for Multi-Agent AI Communication
-Interactive demo and paper showcase
-"""
+from __future__ import annotations
+
+from typing import Any
 
 import gradio as gr
+from app_logic import (
+    analyze_wire,
+    build_ucr_rows,
+    get_langgraph_snippet,
+    get_overview_metrics,
+    get_resource_rows,
+    get_training_guidance,
+    load_example_wires,
+)
 
-# Paper metadata
-PAPER_TITLE = "Slipstream: Semantic Quantization for Efficient Multi-Agent Coordination"
-PAPER_ABSTRACT = """As multi-agent LLM systems scale, coordination bandwidth becomes a primary cost driver:
-every token spent on routing, intent framing, and redundant context is paid repeatedly across agents and turns.
-Current approaches waste 40-60% of compute on coordination overhead, with communication costs scaling O(n^2) as agent counts increase.
-
-This paper introduces Slipstream, a protocol that performs semantic quantization: mapping free-form messages onto
-a shared Universal Concept Reference (UCR) and transmitting factorized intents (Force + Object) that identify structured actions.
-Unlike syntactic compression (which fails due to BPE tokenizer fragmentation), Slipstream transmits natural-language
-tokens that tokenize efficiently across model architectures.
-
-**v3 Innovation:** Factorized 2-token intents (Force-Object) replace ~46 flat anchors.
-This reduces the classification problem from 46-way to 12-way + 30-way, making it learnable by small models.
-
-**Results:** 82% token reduction (41.9 -> 7.4 tokens average) while maintaining semantic fidelity."""
-
-# Force tokens
-FORCES = [
-    "Observe", "Inform", "Ask", "Request", "Propose", "Commit",
-    "Eval", "Meta", "Accept", "Reject", "Error", "Fallback",
+TABLE_HEADERS = ["index", "force", "object", "canonical", "coords", "core", "state"]
+SNIPPET_TOPICS = [
+    "Boundary Encode/Decode",
+    "Force:Object Router",
+    "Fallback-Aware Flow",
+]
+GUIDANCE_TOPICS = [
+    "When should I train?",
+    "What does the dataset look like?",
+    "What model artifacts exist?",
+    "How should I evaluate first?",
 ]
 
-# Object tokens
-OBJECTS = [
-    "State", "Change", "Error", "Result", "Status", "Complete",
-    "Blocked", "Progress", "Clarify", "Permission", "Resource",
-    "Task", "Plan", "Review", "Help", "Cancel", "Priority",
-    "Alternative", "Rollback", "Deadline", "Approve", "NeedsWork",
-    "Ack", "Sync", "Handoff", "Escalate", "Abort", "Condition",
-    "Defer", "Timeout", "Validation", "Generic",
-]
-
-FORCE_DESCRIPTIONS = {
-    "Observe": "Passively notice state/change/error",
-    "Inform": "Report information (status, completion, blockage)",
-    "Ask": "Request information (clarification, status, permission)",
-    "Request": "Ask for action (task, review, help, plan)",
-    "Propose": "Suggest something (plan, change, alternative)",
-    "Commit": "Commit to something (task, deadline, resource)",
-    "Eval": "Evaluate work (approve, needs work)",
-    "Meta": "Protocol-level (acknowledge, sync, handoff)",
-    "Accept": "Accept a proposal or request",
-    "Reject": "Decline a proposal or request",
-    "Error": "Report system error (timeout, resource, permission)",
-    "Fallback": "Content too specific for standard tokens",
+CUSTOM_CSS = """
+:root {
+  --slip-bg: #111111;
+  --slip-surface: #1a1a1a;
+  --slip-line: rgba(255, 255, 255, 0.08);
+  --slip-text: #f4efe6;
+  --slip-muted: #c5b8a0;
+  --slip-accent: #d18d3b;
+  --slip-cool: #83c5be;
 }
 
-def encode_message(src: str, dst: str, force: str, obj: str, payload: str) -> str:
-    """Encode a message in Slipstream v3 wire format."""
-    if not src or not dst or not force or not obj:
-        return "Please fill in source, destination, Force, and Object."
+body, .gradio-container {
+  background:
+    radial-gradient(circle at top left, rgba(209, 141, 59, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(131, 197, 190, 0.12), transparent 22%),
+    var(--slip-bg);
+  color: var(--slip-text);
+}
 
-    # Clean tokens (alphanumeric only)
-    clean_src = "".join(c for c in src.strip() if c.isalnum())[:20] or "agent"
-    clean_dst = "".join(c for c in dst.strip() if c.isalnum())[:20] or "other"
+.gradio-container {
+  max-width: 1320px !important;
+}
 
-    parts = ["SLIP", "v3", clean_src, clean_dst, force, obj]
-    if payload.strip():
-        for token in payload.strip().split():
-            clean = "".join(c for c in token if c.isalnum())
-            if clean:
-                parts.append(clean[:30])
+.hero-shell {
+  border: 1px solid var(--slip-line);
+  border-radius: 28px;
+  padding: 28px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.24);
+}
 
-    wire = " ".join(parts)
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 20px;
+}
 
-    # Token comparison
-    json_example = f'{{"from": "{src}", "to": "{dst}", "force": "{force.lower()}", "object": "{obj.lower()}", "payload": "{payload}"}}'
+.eyebrow {
+  color: var(--slip-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
 
-    json_tokens = len(json_example.split()) + json_example.count('"') + json_example.count(':')
-    slip_tokens = len(parts)
+.hero-title {
+  font-size: 56px;
+  line-height: 0.95;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.05em;
+}
 
-    reduction = ((json_tokens - slip_tokens) / json_tokens) * 100 if json_tokens > 0 else 0
+.hero-copy {
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--slip-muted);
+}
 
-    return f"""**Slipstream v3 Wire Format:**
-```
-{wire}
-```
+.signal-card, .mini-card {
+  border: 1px solid var(--slip-line);
+  border-radius: 20px;
+  padding: 18px;
+  background: rgba(255,255,255,0.03);
+}
 
-**Estimated Tokens:** {slip_tokens}
+.signal-label {
+  color: var(--slip-cool);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
 
-**Equivalent JSON (~{json_tokens} tokens):**
-```json
-{json_example}
-```
+.signal-code {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--slip-text);
+  white-space: pre-wrap;
+}
 
-**Token Reduction:** {reduction:.0f}%
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.stat-label {
+  color: var(--slip-muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.panel-copy {
+  color: var(--slip-muted);
+  line-height: 1.65;
+}
+
+@media (max-width: 960px) {
+  .hero-grid,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-title {
+    font-size: 42px;
+  }
+}
 """
 
-def decode_message(wire: str) -> str:
-    """Decode a Slipstream v3 wire format message."""
-    if not wire.strip():
-        return "Please enter a SLIP v3 message to decode."
 
-    parts = wire.strip().split()
+def _metrics_html() -> str:
+    cards = []
+    for item in get_overview_metrics():
+        cards.append(
+            f"""
+            <div class="mini-card">
+              <div class="stat-value">{item["value"]}</div>
+              <div class="stat-label">{item["metric"]}</div>
+            </div>
+            """
+        )
+    return "<div class='stats-grid'>" + "".join(cards) + "</div>"
 
-    if len(parts) < 6 or parts[0] != "SLIP" or parts[1] != "v3":
-        return "Invalid format. Expected: SLIP v3 <src> <dst> <Force> <Object> [payload...]"
 
-    src = parts[2]
-    dst = parts[3]
-    force = parts[4]
-    obj = parts[5]
-    payload = parts[6:] if len(parts) > 6 else []
+def _resources_markdown() -> str:
+    rows = ["| Resource | Link |", "|---|---|"]
+    for item in get_resource_rows():
+        rows.append(f"| {item['resource']} | {item['link']} |")
+    return "\n".join(rows)
 
-    force_desc = FORCE_DESCRIPTIONS.get(force, "Unknown force")
-    is_fallback = force == "Fallback"
 
-    result = f"""**Decoded Message:**
+def _render_ucr(force_filter: str, search: str) -> tuple[str, list[list[str]]]:
+    rows = build_ucr_rows(force_filter=force_filter, search=search)
+    summary = (
+        f"Showing **{len(rows)}** anchors"
+        if rows
+        else "No anchors matched the current filter."
+    )
+    data = [[row[header] for header in TABLE_HEADERS] for row in rows]
+    return summary, data
 
-| Field | Value |
-|-------|-------|
-| Version | v3 |
-| Source | {src} |
-| Destination | {dst} |
-| Force | {force} |
-| Object | {obj} |
-| Force Meaning | {force_desc} |
-| Payload | {' '.join(payload) if payload else '(none)'} |
-| Is Fallback | {'Yes' if is_fallback else 'No'} |
-"""
 
-    if is_fallback and payload:
-        result += f"\n**Fallback Ref:** `{payload[0]}` (raw text stored out-of-band)"
+def _render_analysis(wire: str) -> tuple[str, str, dict[str, Any], str]:
+    result = analyze_wire(wire)
+    if result["status"] == "valid":
+        status = "### Valid wire\nThis message passes Slipstream v3 validation."
+        issues = "No issues."
+    else:
+        status = "### Invalid wire\nThis message violates one or more Slipstream v3 invariants."
+        issues = "\n".join(f"- {issue}" for issue in result["issues"])
+    return status, issues, result["fields"], result["human"]
 
-    return result
 
-# Build the Gradio interface
-with gr.Blocks(title="Slipstream v3 Protocol", theme=gr.themes.Soft()) as demo:
-    gr.Markdown(f"""
-    # Slipstream v3
-    ### Factorized Semantic Quantization for Multi-Agent AI Communication
+def _load_example(example_type: str, selected: str | None) -> str:
+    if selected:
+        return selected
+    examples = load_example_wires(example_type)
+    return examples[0] if examples else ""
 
-    **82% fewer tokens. Factorized Force-Object intents. Built for the AAIF ecosystem.**
 
-    ---
-    """)
+def _example_choices(example_type: str) -> tuple[dict[str, Any], str]:
+    examples = load_example_wires(example_type)
+    value = examples[0] if examples else ""
+    return gr.update(choices=examples, value=value), value
+
+
+def _render_snippet(topic: str) -> tuple[str, str]:
+    copy = {
+        "Boundary Encode/Decode": (
+            "Add Slipstream at the handoff boundary. "
+            "Keep your graph state and existing node logic intact."
+        ),
+        "Force:Object Router": (
+            "Route on `Force:Object` once the message is decoded. "
+            "This is the smallest useful production pattern."
+        ),
+        "Fallback-Aware Flow": (
+            "Let fallback handle the long tail first. "
+            "Only train later if the fallback rate is too high for your workload."
+        ),
+    }[topic]
+    return copy, get_langgraph_snippet(topic)
+
+
+with gr.Blocks(title="Slipstream Lab") as demo:
+    gr.HTML(
+        """
+        <section class="hero-shell">
+          <div class="hero-grid">
+            <div>
+              <div class="eyebrow">Slipstream 3.1.1 · Hugging Face Technical Companion</div>
+              <h1 class="hero-title">Explore the protocol, not just the pitch.</h1>
+              <p class="hero-copy">
+                This Space is the technical counterpart to the static website.
+                It is designed for engineers evaluating Slipstream in real systems:
+                inspect UCR anchors, validate wire messages against the shipped invariants,
+                generate LangGraph integration snippets, and review the dataset/model path
+                without running live inference.
+              </p>
+              <p class="hero-copy">
+                It is CPU-first and ZeroGPU-compatible by design.
+                There is no mandatory GPU path and no large-model dependency in the app itself.
+              </p>
+            </div>
+            <div class="signal-card">
+              <div class="signal-label">Wire format</div>
+              <div class="signal-code">
+                SLIP v3 &lt;src&gt; &lt;dst&gt; &lt;Force&gt; &lt;Object&gt; [payload...]
+              </div>
+              <div class="signal-label" style="margin-top: 16px;">Example</div>
+              <div class="signal-code">SLIP v3 planner reviewer Request Review auth</div>
+              <div class="signal-label" style="margin-top: 16px;">Why it matters</div>
+              <div class="panel-copy">
+                Slipstream compresses routine coordination traffic into short, explicit
+                messages that are easier to route, validate, and reason about than
+                repeated JSON envelopes.
+              </div>
+            </div>
+          </div>
+        </section>
+        """
+    )
+
+    gr.HTML(_metrics_html())
 
     with gr.Tabs():
-        with gr.TabItem("About"):
-            gr.Markdown(f"""
-            ## Abstract
+        with gr.TabItem("Overview"):
+            gr.Markdown(
+                """
+                ## What this Space is for
 
-            {PAPER_ABSTRACT}
+                Use this Space when you want to inspect the released protocol,
+                validate concrete wire examples, or understand how Slipstream
+                fits into a LangGraph-style orchestration stack.
 
-            ---
+                It does **not** try to be a second homepage and it does **not**
+                depend on live model inference.
+                """
+            )
+            gr.Markdown(_resources_markdown())
 
-            ## Resources
+        with gr.TabItem("UCR Explorer"):
+            gr.Markdown(
+                """
+                ## Universal Concept Reference
 
-            | Resource | Link |
-            |----------|------|
-            | Paper (Zenodo) | [doi.org/10.5281/zenodo.18063451](https://doi.org/10.5281/zenodo.18063451) |
-            | GitHub | [github.com/anthony-maio/slipcore](https://github.com/anthony-maio/slipcore) |
-            | PyPI | `pip install slipcore` |
-            | Model (LoRA) | [anthonym21/slipstream-glm-z1-9b](https://huggingface.co/anthonym21/slipstream-glm-z1-9b) |
-            | Dataset | [anthonym21/slipstream-tqt](https://huggingface.co/datasets/anthonym21/slipstream-tqt) |
-
-            ---
-
-            ## v3 Wire Format
-
-            ```
-            SLIP v3 <src> <dst> <Force> <Object> [payload...]
-            ```
-
-            - **Factorized intents** - Force (action verb) + Object (domain noun)
-            - **No special characters** - avoids BPE fragmentation
-            - **Space-separated** - clean tokenization
-            - **12 Force tokens** - closed vocabulary, easily learned
-            - **30+ Object tokens** - extensible domain nouns
-
-            ---
-
-            ## Cost Savings at Scale
-
-            | Deployment | Agents | Annual JSON Cost | Annual SLIP Cost | Savings |
-            |------------|--------|------------------|------------------|---------|
-            | Startup | 10 | $3,600 | $650 | $2,950 |
-            | Scale-up | 50 | $180,000 | $32,400 | **$147,600** |
-            | Enterprise | 1,000 | $2,500,000 | $450,000 | **$2,050,000** |
-            """)
-
-        with gr.TabItem("Encode"):
-            gr.Markdown("## Encode a v3 Message")
-            gr.Markdown("Create a Slipstream v3 wire format message from Force-Object components.")
-
+                Browse the 45 core anchors that define the released
+                Slipstream 3.1.1 semantic surface. Filter by Force or search
+                across object names, canonical text, and coordinates.
+                """
+            )
             with gr.Row():
-                src_input = gr.Textbox(label="Source Agent", placeholder="alice", value="alice")
-                dst_input = gr.Textbox(label="Destination Agent", placeholder="bob", value="bob")
-
-            with gr.Row():
-                force_input = gr.Dropdown(
-                    choices=FORCES,
-                    label="Force (Action Verb)",
-                    value="Request",
-                    info="What action is being performed?"
+                force_filter = gr.Dropdown(
+                    choices=["All"] + sorted({row["force"] for row in build_ucr_rows()}),
+                    value="All",
+                    label="Force filter",
                 )
-                obj_input = gr.Dropdown(
-                    choices=OBJECTS,
-                    label="Object (Domain Noun)",
-                    value="Review",
-                    info="What domain concept is the target?"
+                search_box = gr.Textbox(
+                    label="Search",
+                    placeholder="review, timeout, handoff, 3 4 0 4",
                 )
-
-            payload_input = gr.Textbox(
-                label="Payload (optional, space-separated)",
-                placeholder="auth module",
-                value="auth"
+            ucr_summary = gr.Markdown()
+            ucr_table = gr.Dataframe(
+                headers=TABLE_HEADERS,
+                datatype=["str"] * len(TABLE_HEADERS),
+                interactive=False,
+                wrap=True,
+            )
+            for event in (force_filter.change, search_box.submit):
+                event(
+                    _render_ucr,
+                    inputs=[force_filter, search_box],
+                    outputs=[ucr_summary, ucr_table],
+                )
+            demo.load(
+                _render_ucr,
+                inputs=[force_filter, search_box],
+                outputs=[ucr_summary, ucr_table],
             )
 
-            encode_btn = gr.Button("Encode Message", variant="primary")
-            encode_output = gr.Markdown()
+        with gr.TabItem("Conformance Lab"):
+            gr.Markdown(
+                """
+                ## Conformance Lab
 
-            encode_btn.click(
-                encode_message,
-                inputs=[src_input, dst_input, force_input, obj_input, payload_input],
-                outputs=encode_output
+                Paste a `SLIP v3` wire message or load one of the shipped
+                conformance vectors. The validator below uses the library
+                implementation directly, so the results match the released
+                runtime behavior.
+                """
             )
-
-        with gr.TabItem("Decode"):
-            gr.Markdown("## Decode a v3 Message")
-            gr.Markdown("Parse a Slipstream v3 wire format message.")
-
+            with gr.Row():
+                example_type = gr.Radio(
+                    choices=["Valid", "Invalid"],
+                    value="Valid",
+                    label="Example set",
+                )
+                example_wire = gr.Dropdown(
+                    choices=load_example_wires("Valid"),
+                    value=load_example_wires("Valid")[0],
+                    label="Conformance example",
+                )
             wire_input = gr.Textbox(
-                label="SLIP v3 Wire Message",
-                placeholder="SLIP v3 alice bob Request Review auth",
-                value="SLIP v3 alice bob Request Review auth"
+                label="Wire message",
+                lines=4,
+                value=load_example_wires("Valid")[0],
             )
+            analyze_btn = gr.Button("Validate and parse", variant="primary")
+            status_md = gr.Markdown()
+            issues_md = gr.Markdown(label="Issues")
+            fields_json = gr.JSON(label="Parsed fields")
+            human_md = gr.Markdown(label="Human render")
 
-            decode_btn = gr.Button("Decode Message", variant="primary")
-            decode_output = gr.Markdown()
-
-            decode_btn.click(
-                decode_message,
+            example_type.change(
+                _example_choices,
+                inputs=example_type,
+                outputs=[example_wire, wire_input],
+            )
+            example_wire.change(
+                _load_example,
+                inputs=[example_type, example_wire],
+                outputs=wire_input,
+            )
+            analyze_btn.click(
+                _render_analysis,
                 inputs=wire_input,
-                outputs=decode_output
+                outputs=[status_md, issues_md, fields_json, human_md],
+            )
+            demo.load(
+                _render_analysis,
+                inputs=wire_input,
+                outputs=[status_md, issues_md, fields_json, human_md],
             )
 
-        with gr.TabItem("Force Tokens"):
-            gr.Markdown("## Force Tokens (12 Closed Vocabulary)")
-            gr.Markdown("The action verbs in the factorized intent model:")
+        with gr.TabItem("LangGraph Starter"):
+            gr.Markdown(
+                """
+                ## LangGraph Starter
 
-            force_table = "\n".join([f"| `{k}` | {v} |" for k, v in FORCE_DESCRIPTIONS.items()])
-            gr.Markdown(f"""
-            | Force | Description |
-            |-------|-------------|
-            {force_table}
-            """)
+                These snippets are meant to be copied into your graph layer.
+                Start with boundary encode/decode and route on `Force:Object`.
+                Training is optional and should come only after you have
+                measured real traffic.
+                """
+            )
+            snippet_topic = gr.Dropdown(
+                choices=SNIPPET_TOPICS,
+                value=SNIPPET_TOPICS[0],
+                label="Pattern",
+            )
+            snippet_copy = gr.Markdown()
+            snippet_code = gr.Code(language="python", interactive=False)
+            snippet_topic.change(
+                _render_snippet,
+                inputs=snippet_topic,
+                outputs=[snippet_copy, snippet_code],
+            )
+            demo.load(
+                _render_snippet,
+                inputs=snippet_topic,
+                outputs=[snippet_copy, snippet_code],
+            )
 
-        with gr.TabItem("Object Tokens"):
-            gr.Markdown("## Object Tokens (30+ Extensible)")
-            gr.Markdown("The domain nouns in the factorized intent model:")
+        with gr.TabItem("Dataset / Model"):
+            gr.Markdown(
+                """
+                ## Dataset and model path
 
-            obj_rows = [f"| `{o}` |" for o in OBJECTS]
-            gr.Markdown(f"""
-            | Object |
-            |--------|
-            {chr(10).join(obj_rows)}
-            """)
+                Slipstream can be adopted without training. This tab is here to
+                clarify when training becomes useful, what the dataset contains,
+                and how to think about evaluation before you fine-tune anything.
+                """
+            )
+            guidance_topic = gr.Dropdown(
+                choices=GUIDANCE_TOPICS,
+                value=GUIDANCE_TOPICS[0],
+                label="Question",
+            )
+            guidance_md = gr.Markdown()
+            guidance_topic.change(get_training_guidance, inputs=guidance_topic, outputs=guidance_md)
+            demo.load(get_training_guidance, inputs=guidance_topic, outputs=guidance_md)
 
-    gr.Markdown("""
-    ---
-
-    **Citation:**
-    ```bibtex
-    @misc{{maio2025slipstream,
-      title={{Slipstream: Semantic Quantization for Efficient Multi-Agent Coordination}},
-      author={{Maio, Anthony}},
-      year={{2025}},
-      doi={{10.5281/zenodo.18063451}}
-    }}
-    ```
-
-    Apache 2.0 License | [Anthony Maio](https://github.com/anthony-maio)
-    """)
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(
+        theme=gr.themes.Base(
+            primary_hue="amber",
+            secondary_hue="stone",
+            neutral_hue="zinc",
+        ),
+        css=CUSTOM_CSS,
+    )
