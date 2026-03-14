@@ -28,7 +28,7 @@
         <a href="#protocol">Protocol</a>
         <a href="#langgraph">LangGraph</a>
         <a href="#playground">Playground</a>
-        <a href="#release">Release</a>
+        <a href="#release">Adoption</a>
       </div>
       <div class="nav-actions">
         <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">theme</button>
@@ -42,19 +42,20 @@
     <section class="hero">
       <div class="container-wide hero-grid">
         <div class="hero-copy">
-          <div class="eyebrow">Release Site · Static Deploy · Cloudflare / GitHub Pages</div>
+          <div class="eyebrow">Transport Layer for Multi-Agent Systems</div>
           <h1>Kill the token tax.</h1>
           <p class="hero-lead">
             Slipstream 3.1 turns verbose agent coordination into a compact wire protocol:
             <code>SLIP v3 &lt;src&gt; &lt;dst&gt; &lt;Force&gt; &lt;Object&gt; [payload...]</code>.
           </p>
           <p class="hero-sub">
-            The practical result is cheaper, cleaner multi-agent traffic. No JSON envelopes on every hop.
-            No model retraining required to start. LangGraph-ready on day one.
+            Use it when your agents exchange a lot of routine coordination traffic: requests, status updates,
+            handoffs, approvals, and errors. Slipstream keeps those messages compact, explicit, and easy to route.
+            Start with LangGraph adapters and fallback. Train later only if your workload needs it.
           </p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#playground">Try the playground</a>
-            <a class="btn btn-ghost" href="https://pypi.org/project/slipcore/" target="_blank" rel="noopener noreferrer">pip install slipcore</a>
+            <a class="btn btn-primary" href="#langgraph">See LangGraph adoption</a>
+            <a class="btn btn-ghost" href="#playground">Try the playground</a>
           </div>
           <div class="hero-stats" role="list" aria-label="Release stats">
             <div class="stat" role="listitem">
@@ -114,13 +115,13 @@
             </ul>
           </article>
           <article class="card card-accent">
-            <div class="card-kicker">What changed in 3.1</div>
-            <h3>Protocol hardening plus adoption path.</h3>
+            <div class="card-kicker">Why teams adopt it</div>
+            <h3>Smaller messages without hiding the intent.</h3>
             <ul class="bullet-list" role="list">
-              <li>Factorized Force + Object wire format stays on <code>SLIP v3</code>.</li>
-              <li>Strict fallback refs and closed Force vocabulary.</li>
-              <li>Core-anchor immutability and release governance.</li>
-              <li>LangGraph transport adapters so you can adopt without retraining.</li>
+              <li>Force + Object keeps the wire compact and still readable.</li>
+              <li>Alphanumeric tokens avoid the tokenizer fragmentation that kills syntactic compression.</li>
+              <li>Strict parsing and fallback refs make the behavior predictable in production.</li>
+              <li>LangGraph adapters let you pilot at the orchestration layer before you retrain anything.</li>
             </ul>
           </article>
         </div>
@@ -132,7 +133,8 @@
         <div class="section-label">The Protocol</div>
         <h2>Readable on the wire. Strict in the runtime.</h2>
         <p class="section-intro">
-          Slipstream 3.1 keeps the protocol simple enough for humans to debug and strict enough for production systems to trust.
+          At a glance, Slipstream is just a short, human-readable wire format. Under the hood, 3.1 adds the hard edges
+          needed for production use: strict validation, closed core semantics, and explicit fallback behavior.
         </p>
         <div class="protocol-grid">
           <article class="card">
@@ -177,26 +179,27 @@
     <section class="section section-surface" id="langgraph">
       <div class="container">
         <div class="section-label">LangGraph</div>
-        <h2>Adopt Slipstream in LangGraph without training small models first.</h2>
+        <h2>Add Slipstream to LangGraph without retraining your agents first.</h2>
         <p class="section-intro">
-          Start at the orchestrator layer. Add one encode node, one decode node, and route on <code>Force:Object</code>.
-          The built-in keyword quantizer and strict fallback path are enough to get real deployments moving.
+          Slipstream fits between your graph logic and your transport. Keep your existing nodes, prompts, and tools.
+          Add encode and decode nodes around handoffs, then route on <code>Force:Object</code>. The built-in keyword
+          quantizer gets you started, and fallback refs catch everything that does not quantize cleanly.
         </p>
         <div class="steps-grid" role="list">
           <article class="step-card" role="listitem">
             <div class="step-number">01</div>
-            <h3>Agent writes intent</h3>
-            <p>Keep your existing agent logic. Nodes produce <code>thought</code>, <code>src</code>, and <code>dst</code> in state.</p>
+            <h3>Keep your graph state</h3>
+            <p>Your nodes still produce natural-language intent and context. Slipstream does not require a rewrite of your agent logic.</p>
           </article>
           <article class="step-card" role="listitem">
             <div class="step-number">02</div>
-            <h3>Slipstream encodes transport</h3>
-            <p>Use <code>LangGraphSlipstreamAdapter</code> to emit <code>slip_wire</code> with quantized Force + Object tokens.</p>
+            <h3>Encode at the boundary</h3>
+            <p>The adapter turns that intent into <code>SLIP v3</code> messages or fallback refs before the message leaves the handoff boundary.</p>
           </article>
           <article class="step-card" role="listitem">
             <div class="step-number">03</div>
-            <h3>Router dispatches on intent</h3>
-            <p>Decode and route on <code>Request:Review</code>, <code>Inform:Status</code>, or <code>Fallback:Generic</code>.</p>
+            <h3>Route and observe</h3>
+            <p>Dispatch on <code>Request:Review</code>, <code>Inform:Status</code>, or <code>Fallback:Generic</code>, then measure fallback rate before deciding whether to train.</p>
           </article>
         </div>
         <div class="code-pair">
@@ -225,7 +228,11 @@ pip install langgraph</pre>
     <section class="section" id="playground">
       <div class="container">
         <div class="section-label">Playground</div>
-        <h2>Show the protocol before you ask anyone to adopt it.</h2>
+        <h2>Try the wire format, inspect the message shape, and estimate the savings.</h2>
+        <p class="section-intro">
+          If you are evaluating fit for your stack, start here. Build a message, decode one back into intent,
+          and sanity-check whether the coordination savings are material for your workload.
+        </p>
         <div class="playground-grid">
           <article class="play-card">
             <h3>Wire builder</h3>
@@ -306,29 +313,33 @@ pip install langgraph</pre>
 
     <section class="section section-surface" id="release">
       <div class="container">
-        <div class="section-label">Release</div>
-        <h2>Everything needed for a real 3.1 launch.</h2>
+        <div class="section-label">Adoption</div>
+        <h2>Everything you need to evaluate, pilot, and ship Slipstream 3.1.</h2>
         <div class="release-grid">
           <article class="card">
-            <h3>Protocol + runtime</h3>
+            <h3>Protocol you can trust</h3>
             <ul class="bullet-list" role="list">
-              <li>strict fallback refs</li>
-              <li>closed Force vocabulary</li>
-              <li>core-anchor immutability</li>
-              <li>full conformance gating</li>
+              <li>Strict parser and validator for the <code>SLIP v3</code> wire format.</li>
+              <li>Closed Force vocabulary and immutable core anchors.</li>
+              <li>Fallback refs stay off-wire and keep long-tail messages bounded.</li>
+              <li>Conformance tests and release gates back the implementation.</li>
             </ul>
           </article>
           <article class="card">
-            <h3>Adoption + governance</h3>
+            <h3>Adoption path that starts where you are</h3>
             <ul class="bullet-list" role="list">
-              <li>Python-first docs</li>
-              <li>LangGraph integration path</li>
-              <li>maintainer-led governance docs</li>
-              <li>paper / spec / code sync</li>
+              <li>Use the LangGraph adapter at the orchestration layer first.</li>
+              <li>Keep your existing prompts, tools, and agent behaviors.</li>
+              <li>Start with keyword quantization plus fallback and measure real traffic.</li>
+              <li>Train a model later only if your workload needs higher recall.</li>
             </ul>
           </article>
           <article class="card">
-            <h3>Artifacts</h3>
+            <h3>Code, docs, and references</h3>
+            <p class="card-copy">
+              Read the code, install the package, review the paper, and inspect the dataset and reference model
+              if you want to go beyond rules-based adoption.
+            </p>
             <div class="artifact-links">
               <a href="https://github.com/anthony-maio/slipcore" target="_blank" rel="noopener noreferrer">GitHub repository</a>
               <a href="https://pypi.org/project/slipcore/" target="_blank" rel="noopener noreferrer">PyPI package</a>
@@ -340,12 +351,16 @@ pip install langgraph</pre>
         </div>
         <div class="faq">
           <article class="faq-item">
-            <h3>Do I need to train small models to adopt Slipstream in LangGraph?</h3>
-            <p>No. Start with orchestrator-layer encoding, decode on the receiving side, and route on <code>Force:Object</code>. Train later only if fallback rate or quantization accuracy is not good enough for your workload.</p>
+            <h3>Do I need to retrain my agents or models before I can use Slipstream?</h3>
+            <p>No. Start with orchestrator-layer encoding and decoding, route on <code>Force:Object</code>, and let fallback handle the long tail. Training is optional and usually comes later, after you have measured real traffic.</p>
           </article>
           <article class="faq-item">
-            <h3>Can I still ship a Hugging Face Space?</h3>
-            <p>Yes, but this site is designed for a static Cloudflare Pages or GitHub Pages deployment with zero runtime cost and no GPU dependency.</p>
+            <h3>What happens when a message does not fit the vocabulary?</h3>
+            <p>Slipstream uses pointer-based fallback. The wire carries a short ref token and the full content stays in your fallback store, so edge cases do not break the protocol or blow up message size.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Where should Slipstream sit in my stack?</h3>
+            <p>Between your agent logic and your transport or message bus. In LangGraph, that usually means encode and decode nodes at the boundaries where agents hand work to each other.</p>
           </article>
         </div>
       </div>
