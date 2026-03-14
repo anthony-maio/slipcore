@@ -221,7 +221,7 @@ def get_overview_metrics() -> list[dict[str, str]]:
     return [
         {"metric": "Current release", "value": "3.1.1"},
         {"metric": "Core dependencies", "value": "0"},
-        {"metric": "Passing tests", "value": "583"},
+        {"metric": "Passing tests", "value": "590"},
         {"metric": "Average token reduction", "value": "82%"},
     ]
 
