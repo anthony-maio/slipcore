@@ -16,6 +16,18 @@ from slipcore import (
 ROOT = Path(__file__).resolve().parents[1]
 VALID_VECTORS = ROOT / "spec" / "conformance" / "valid.jsonl"
 INVALID_VECTORS = ROOT / "spec" / "conformance" / "invalid.jsonl"
+FALLBACK_VALID_WIRES = [
+    "SLIP v3 planner reviewer Request Review auth",
+    "SLIP v3 ops dev Inform Status green",
+    "SLIP v3 worker router Meta Ack",
+    "SLIP v3 dev sre Fallback Generic ref7f3a1b2c",
+]
+FALLBACK_INVALID_WIRES = [
+    "BAD v3 planner reviewer Request Review auth",
+    "SLIP v3 planner reviewer Unknown Review auth",
+    "SLIP v3 dev sre Fallback Generic",
+    "SLIP v3 planner reviewer Request Review auth-module",
+]
 
 
 @lru_cache(maxsize=1)
@@ -95,14 +107,17 @@ def analyze_wire(wire: str) -> dict[str, Any]:
 
 def load_example_wires(kind: str) -> list[str]:
     path = VALID_VECTORS if kind == "Valid" else INVALID_VECTORS
+    fallback = FALLBACK_VALID_WIRES if kind == "Valid" else FALLBACK_INVALID_WIRES
     examples: list[str] = []
+    if not path.exists():
+        return fallback
     with path.open(encoding="utf-8") as handle:
         for line in handle:
             record = json.loads(line)
             examples.append(record["wire"])
             if len(examples) == 8:
                 break
-    return examples
+    return examples or fallback
 
 
 LANGGRAPH_SNIPPETS = {

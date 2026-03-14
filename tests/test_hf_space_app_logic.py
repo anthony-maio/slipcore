@@ -74,3 +74,18 @@ def test_get_training_guidance_marks_training_as_optional() -> None:
 
     assert "optional" in guidance.lower()
     assert "fallback" in guidance.lower()
+
+
+def test_load_example_wires_falls_back_when_vectors_are_missing(
+    monkeypatch, tmp_path
+) -> None:
+    logic = _load_app_logic_module()
+
+    monkeypatch.setattr(logic, "VALID_VECTORS", tmp_path / "missing-valid.jsonl")
+    monkeypatch.setattr(logic, "INVALID_VECTORS", tmp_path / "missing-invalid.jsonl")
+
+    valid = logic.load_example_wires("Valid")
+    invalid = logic.load_example_wires("Invalid")
+
+    assert valid == logic.FALLBACK_VALID_WIRES
+    assert invalid == logic.FALLBACK_INVALID_WIRES
