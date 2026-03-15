@@ -37,6 +37,8 @@ CUSTOM_CSS = """
   --slip-line: rgba(255, 255, 255, 0.08);
   --slip-text: #f4efe6;
   --slip-muted: #c5b8a0;
+  --slip-hero: #fbf5ea;
+  --slip-prose: #e7dbc8;
   --slip-accent: #d18d3b;
   --slip-cool: #83c5be;
 }
@@ -53,12 +55,43 @@ body, .gradio-container {
   max-width: 1320px !important;
 }
 
+.gradio-container .prose,
+.gradio-container .prose *,
+.gradio-container .html-container,
+.gradio-container .html-container * {
+  color: var(--slip-text);
+}
+
+.gradio-container .prose h1,
+.gradio-container .prose h2,
+.gradio-container .prose h3,
+.gradio-container .prose h4,
+.gradio-container .prose strong,
+.gradio-container .prose th {
+  color: var(--slip-hero) !important;
+}
+
+.gradio-container .prose p,
+.gradio-container .prose li,
+.gradio-container .prose td,
+.gradio-container .prose code,
+.gradio-container .prose a {
+  color: var(--slip-prose) !important;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+}
+
 .hero-shell {
   border: 1px solid var(--slip-line);
   border-radius: 28px;
   padding: 28px;
   background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   box-shadow: 0 24px 80px rgba(0,0,0,0.24);
+  color: var(--slip-text);
+}
+
+.hero-shell,
+.hero-shell * {
+  color: var(--slip-text);
 }
 
 .hero-grid {
@@ -68,7 +101,9 @@ body, .gradio-container {
 }
 
 .eyebrow {
-  color: var(--slip-accent);
+  color: var(--slip-accent) !important;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 12px;
@@ -76,6 +111,8 @@ body, .gradio-container {
 }
 
 .hero-title {
+  color: var(--slip-hero) !important;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 56px;
   line-height: 0.95;
   margin: 0 0 16px 0;
@@ -83,9 +120,10 @@ body, .gradio-container {
 }
 
 .hero-copy {
+  color: var(--slip-prose) !important;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
   font-size: 17px;
   line-height: 1.65;
-  color: var(--slip-muted);
 }
 
 .signal-card, .mini-card {
@@ -96,7 +134,9 @@ body, .gradio-container {
 }
 
 .signal-label {
-  color: var(--slip-cool);
+  color: var(--slip-cool) !important;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.10em;
   font-size: 12px;
@@ -111,7 +151,7 @@ body, .gradio-container {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.65;
-  color: var(--slip-text);
+  color: var(--slip-hero) !important;
   white-space: pre-wrap;
 }
 
@@ -123,18 +163,22 @@ body, .gradio-container {
 }
 
 .stat-value {
+  color: var(--slip-hero);
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 28px;
   font-weight: 700;
 }
 
 .stat-label {
-  color: var(--slip-muted);
+  color: var(--slip-prose) !important;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
   font-size: 13px;
   margin-top: 6px;
 }
 
 .panel-copy {
-  color: var(--slip-muted);
+  color: var(--slip-prose) !important;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
   line-height: 1.65;
 }
 
