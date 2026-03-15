@@ -1,0 +1,24 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0F0F10"/>
+  <circle cx="154" cy="116" r="210" fill="#D18D3B" fill-opacity="0.08"/>
+  <circle cx="1054" cy="88" r="180" fill="#83C5BE" fill-opacity="0.08"/>
+  <rect x="56" y="52" width="1088" height="526" rx="32" fill="#151516" stroke="#2A2A2D" stroke-width="2"/>
+  <rect x="88" y="88" width="154" height="154" rx="34" fill="#111111"/>
+  <rect x="108" y="120" width="86" height="70" rx="18" fill="#191919" stroke="#2A2A2A" stroke-width="2"/>
+  <path d="M119 141H149" stroke="#D18D3B" stroke-width="9" stroke-linecap="round"/>
+  <path d="M119 156H140" stroke="#D18D3B" stroke-width="9" stroke-linecap="round"/>
+  <path d="M119 171H149" stroke="#D18D3B" stroke-width="9" stroke-linecap="round"/>
+  <path d="M160 134L182 155L160 176" stroke="#83C5BE" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="280" y="138" fill="#D18D3B" font-family="Georgia, 'Times New Roman', serif" font-size="24" letter-spacing="4">SLIPSTREAM LAB</text>
+  <text x="280" y="230" fill="#F4EFE6" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="700">Inspect the protocol.</text>
+  <text x="280" y="308" fill="#F4EFE6" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="700">Adopt it with confidence.</text>
+  <text x="280" y="382" fill="#C5B8A0" font-family="'Trebuchet MS', Verdana, sans-serif" font-size="28">
+    Validate SLIP v3 wires, browse the UCR, and copy LangGraph starter patterns
+  </text>
+  <text x="280" y="420" fill="#C5B8A0" font-family="'Trebuchet MS', Verdana, sans-serif" font-size="28">
+    without training a model first.
+  </text>
+  <rect x="88" y="466" width="1024" height="72" rx="20" fill="#121212" stroke="#262626" stroke-width="2"/>
+  <text x="120" y="511" fill="#83C5BE" font-family="'Courier New', monospace" font-size="28">SLIP v3 planner reviewer Request Review auth</text>
+  <text x="868" y="140" fill="#83C5BE" font-family="'Trebuchet MS', Verdana, sans-serif" font-size="22">3.1.1</text>
+</svg>

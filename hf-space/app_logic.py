@@ -16,6 +16,11 @@ from slipcore import (
 ROOT = Path(__file__).resolve().parents[1]
 VALID_VECTORS = ROOT / "spec" / "conformance" / "valid.jsonl"
 INVALID_VECTORS = ROOT / "spec" / "conformance" / "invalid.jsonl"
+SPACE_RAW_ASSET_BASE = "https://huggingface.co/spaces/anthonym21/slipcore/raw/main/assets"
+SPACE_URL = "https://anthonym21-slipcore.hf.space/"
+WEBSITE_URL = "https://slipstream.making-minds.ai"
+FAVICON_URL = f"{SPACE_RAW_ASSET_BASE}/slipstream-mark.svg"
+SOCIAL_CARD_URL = f"{SPACE_RAW_ASSET_BASE}/slipstream-social-card.svg"
 FALLBACK_VALID_WIRES = [
     "SLIP v3 planner reviewer Request Review auth",
     "SLIP v3 ops dev Inform Status green",
@@ -221,9 +226,51 @@ def get_overview_metrics() -> list[dict[str, str]]:
     return [
         {"metric": "Current release", "value": "3.1.1"},
         {"metric": "Core dependencies", "value": "0"},
-        {"metric": "Passing tests", "value": "590"},
+        {"metric": "Passing tests", "value": "593"},
         {"metric": "Average token reduction", "value": "82%"},
     ]
+
+
+def get_head_html() -> str:
+    description = (
+        "Inspect Slipstream 3.1.1, validate SLIP v3 wires, browse UCR anchors, "
+        "and copy LangGraph starter patterns without a live model dependency."
+    )
+    return f"""
+<meta name="description" content="{description}" />
+<meta name="theme-color" content="#111111" />
+<meta property="og:site_name" content="Slipstream Lab" />
+<meta property="og:title" content="Slipstream Lab" />
+<meta property="og:description" content="{description}" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="{SPACE_URL}" />
+<meta property="og:image" content="{SOCIAL_CARD_URL}" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Slipstream Lab" />
+<meta name="twitter:description" content="{description}" />
+<meta name="twitter:image" content="{SOCIAL_CARD_URL}" />
+<meta name="twitter:url" content="{SPACE_URL}" />
+<link rel="icon" type="image/svg+xml" href="{FAVICON_URL}" />
+"""
+
+
+def get_overview_markdown() -> str:
+    return f"""
+## Start here
+
+This Space is for engineers evaluating Slipstream in a real agent stack.
+
+1. **Inspect the protocol surface** in `UCR Explorer`.
+2. **Validate concrete messages** in `Conformance Lab`.
+3. **Drop the adapter into LangGraph** from `LangGraph Starter`.
+4. **Use the dataset/model tab last**, after you have measured fallback rate and routing quality.
+
+You do not need to train a model to adopt Slipstream. Start with the runtime,
+route on `Force:Object`, and train only if your workload needs better
+quantization than the built-in path provides.
+
+For the release narrative, benchmarks, and positioning, use the website: {WEBSITE_URL}
+"""
 
 
 def get_resource_rows() -> list[dict[str, str]]:
