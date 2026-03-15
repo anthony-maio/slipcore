@@ -9,6 +9,7 @@ app_file: app.py
 pinned: false
 license: apache-2.0
 short_description: "CPU-first technical companion for Slipstream 3.1.1"
+thumbnail: "https://huggingface.co/spaces/anthonym21/slipcore/raw/main/assets/slipstream-social-card.svg"
 ---
 
 # Slipstream Lab

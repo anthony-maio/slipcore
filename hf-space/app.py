@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import gradio as gr
@@ -27,6 +28,7 @@ GUIDANCE_TOPICS = [
     "What model artifacts exist?",
     "How should I evaluate first?",
 ]
+FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "slipstream-mark.svg"
 
 CUSTOM_CSS = """
 :root {
@@ -420,4 +422,5 @@ if __name__ == "__main__":
         ),
         css=CUSTOM_CSS,
         head=get_head_html(),
+        favicon_path=FAVICON_PATH,
     )
