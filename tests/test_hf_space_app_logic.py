@@ -89,3 +89,33 @@ def test_load_example_wires_falls_back_when_vectors_are_missing(
 
     assert valid == logic.FALLBACK_VALID_WIRES
     assert invalid == logic.FALLBACK_INVALID_WIRES
+
+
+def test_get_head_html_points_to_custom_space_assets() -> None:
+    logic = _load_app_logic_module()
+
+    head_html = logic.get_head_html()
+
+    assert 'property="og:title"' in head_html
+    assert "Slipstream Lab" in head_html
+    assert 'name="twitter:image"' in head_html
+    assert "slipstream-social-card.svg" in head_html
+    assert 'rel="icon"' in head_html
+    assert "slipstream-mark.svg" in head_html
+
+
+def test_get_overview_markdown_guides_adoption() -> None:
+    logic = _load_app_logic_module()
+
+    overview = logic.get_overview_markdown()
+
+    assert "You do not need to train a model" in overview
+    assert "Inspect the protocol surface" in overview
+    assert "LangGraph" in overview
+
+
+def test_brand_assets_exist() -> None:
+    assets_dir = Path(__file__).resolve().parents[1] / "hf-space" / "assets"
+
+    assert (assets_dir / "slipstream-mark.svg").exists()
+    assert (assets_dir / "slipstream-social-card.svg").exists()

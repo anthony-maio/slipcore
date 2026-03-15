@@ -6,7 +6,9 @@ import gradio as gr
 from app_logic import (
     analyze_wire,
     build_ucr_rows,
+    get_head_html,
     get_langgraph_snippet,
+    get_overview_markdown,
     get_overview_metrics,
     get_resource_rows,
     get_training_guidance,
@@ -264,18 +266,7 @@ with gr.Blocks(title="Slipstream Lab") as demo:
 
     with gr.Tabs():
         with gr.TabItem("Overview"):
-            gr.Markdown(
-                """
-                ## What this Space is for
-
-                Use this Space when you want to inspect the released protocol,
-                validate concrete wire examples, or understand how Slipstream
-                fits into a LangGraph-style orchestration stack.
-
-                It does **not** try to be a second homepage and it does **not**
-                depend on live model inference.
-                """
-            )
+            gr.Markdown(get_overview_markdown())
             gr.Markdown(_resources_markdown())
 
         with gr.TabItem("UCR Explorer"):
@@ -428,4 +419,5 @@ if __name__ == "__main__":
             neutral_hue="zinc",
         ),
         css=CUSTOM_CSS,
+        head=get_head_html(),
     )
