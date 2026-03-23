@@ -33,6 +33,16 @@ It is a transport protocol for multi-agent systems that turns verbose coordinati
 
 https://slipstream.making-minds.ai
 
+## X Post (tighter)
+
+Slipstream 3.1.1 is out.
+
+It is a transport protocol for multi-agent systems that replaces verbose coordination JSON with compact `SLIP v3` messages.
+
+~82% fewer coordination tokens. LangGraph path included. No model training required to start.
+
+https://slipstream.making-minds.ai
+
 ## X Reply
 
 Resources:
