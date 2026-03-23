@@ -1,6 +1,6 @@
-# Migration to slipcore 3.1.0
+# Migration to slipcore 3.1.1
 
-`slipcore 3.1.0` keeps the wire token as `SLIP v3`, but tightens protocol enforcement.
+`slipcore 3.1.1` keeps the wire token as `SLIP v3`, but tightens protocol enforcement.
 
 ## Breaking Changes
 

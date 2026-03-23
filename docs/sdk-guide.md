@@ -12,7 +12,7 @@ SLIP:   SLIP v3 alice bob Request Review auth
 
 The v3 wire format uses a factorized intent model. Instead of 46 flat CamelCase mnemonics (`RequestReview`), intents split into a Force token (12 closed action verbs) and an Object token (31+ extensible domain nouns): `Request` + `Review`.
 
-This guide covers the `slipcore` Python SDK (v3.1.0).
+This guide covers the `slipcore` Python SDK (v3.1.1).
 
 ---
 
@@ -1073,7 +1073,7 @@ print(v3_wire)  # "SLIP v3 alice bob Request Review auth"
 
 ### Migrating permissive fallback wires (v3.1+)
 
-`slipcore 3.1.0` enforces fallback refs strictly. For old logs that emitted
+`slipcore 3.1.1` enforces fallback refs strictly. For old logs that emitted
 `SLIP v3 ... Fallback Generic` without a ref token, use the explicit legacy parser:
 
 ```python
