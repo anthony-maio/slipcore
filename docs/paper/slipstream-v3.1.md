@@ -3,16 +3,16 @@
 Author: Anthony Maio  
 Affiliation: Independent Researcher  
 Contact: anthony@making-minds.ai  
-Draft date: 2026-03-06  
+Draft date: 2026-03-23  
 Canonical source: This markdown file is the tracked paper source of truth for repository parity checks.
 
 ## Abstract
 
 Large multi-agent LLM systems pay a repeated coordination cost: every routing token, intent label, and framing token is sent many times across agents and turns. This overhead can dominate useful work as swarm size grows. Slipstream addresses this problem through semantic quantization: mapping free-form messages to compact, factorized intent tokens.
 
-Slipstream v3.1 keeps the wire protocol version at `SLIP v3` and preserves the factorized Force-Object intent model introduced in v3. The v3.1 contribution is release hardening and open-source operational maturity: strict fallback invariants, closed Force vocabulary enforcement, core-anchor immutability at runtime, explicit legacy migration behavior, and maintainer-led governance gates that require paper/spec/code/test parity for normative changes.
+Slipstream v3.1 keeps the wire protocol version at `SLIP v3` and preserves the factorized Force-Object intent model introduced in v3. The v3.1.1 contribution is release hardening and open-source operational maturity: strict fallback invariants, closed Force vocabulary enforcement, core-anchor immutability at runtime, explicit legacy migration behavior, maintainer-led governance gates that require paper/spec/code/test parity for normative changes, and a Python-first adoption path with LangGraph transport adapters.
 
-The implementation (project release `v3.1.0`) remains zero-dependency in core, supports optional ML quantization, and currently passes 579 automated tests. Prior benchmarking reports approximately 82% token reduction for coordination messages versus JSON baselines while preserving semantic intent. This paper documents the model, protocol invariants, governance process, and reproducibility workflow used to keep research claims synchronized with shipped behavior.
+The implementation (project release `v3.1.1`) remains zero-dependency in core, supports optional ML quantization, and currently passes 594 automated tests. Prior benchmarking reports approximately 82% token reduction for coordination messages versus JSON baselines while preserving semantic intent. This paper documents the model, protocol invariants, governance process, adoption path, and reproducibility workflow used to keep research claims synchronized with shipped behavior.
 
 Keywords: semantic quantization, multi-agent systems, protocol design, intent factorization, governance, reproducibility
 
@@ -40,7 +40,7 @@ Slipstream v3.1 preserves this semantic model and wire grammar but hardens confo
 ### 1.3 Versioning Clarification
 
 - Protocol wire version: `SLIP v3`.
-- Open-source package release for hardening changes: `v3.1.0`.
+- Open-source package release for hardening changes: `v3.1.1`.
 
 The semantic protocol and the package semantic version are intentionally decoupled.
 
@@ -160,7 +160,7 @@ Prior results indicate factorized Force-Object modeling improves reliability ver
 
 As of this draft (`2026-03-06`):
 
-- Test suite status: 579 passed.
+- Test suite status: 594 passed.
 - Core package: zero external dependencies.
 - Build checks: wheel and sdist build successfully; metadata checks pass.
 
@@ -184,6 +184,8 @@ Key properties:
 - Claim map: `docs/claim-map.md`
 - Core wire/UCR implementation: `src/slipcore/wire.py`, `src/slipcore/ucr.py`
 - LangGraph adapter: `src/slipcore/langgraph.py` and `docs/langgraph-guide.md`
+- Release website: `https://slipstream.making-minds.ai`
+- Companion Hugging Face Space: `https://huggingface.co/spaces/anthonym21/slipcore`
 - Conformance vectors: `spec/conformance/*.jsonl`
 - Tests: `tests/`
 - Release checklist: `RELEASE_CHECKLIST.md`
